@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Reminder Hub</string>
+    <string name="widget_name">Today\'s Classes</string>
+    <string name="widget_description">Shows today\'s classes and schedule from Reminder Hub.</string>
+    <string name="widget_today_name">Today\'s Classes</string>
+    <string name="widget_today_description">Shows today\'s classes and schedule from Reminder Hub.</string>
+    <string name="widget_timetable_name">Weekly Timetable</string>
+    <string name="widget_timetable_description">Shows your weekly school timetable from Reminder Hub.</string>
+    <string name="widget_bills_name">Bills Tracker</string>
+    <string name="widget_bills_description">Shows your upcoming and overdue bills from Reminder Hub.</string>
+</resources>

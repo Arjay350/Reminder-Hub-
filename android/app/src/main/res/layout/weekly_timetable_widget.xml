@@ -1,0 +1,1256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/timetable_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <!-- Header Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/timetable_header_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="WEEKLY TIMETABLE"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/timetable_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mon – Sat Schedule"
+                android:textColor="#94A3B8"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/timetable_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_header_badge"
+            android:paddingStart="7dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="2dp"
+            android:text="Timetable"
+            android:textColor="#14B8A6"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Divider -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
+        android:background="#242E4C"
+        android:contentDescription="divider" />
+
+    <!-- Content Area -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- Empty State -->
+        <LinearLayout
+            android:id="@+id/timetable_empty_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No classes scheduled"
+                android:textColor="#94A3B8"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Tap to open Reminder Hub timetable"
+                android:textColor="#64748B"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Timetable Grid: 6 Days (Mon - Sat) -->
+        <LinearLayout
+            android:id="@+id/timetable_grid_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:visibility="visible">
+
+            <!-- Monday Column -->
+            <LinearLayout
+                android:id="@+id/col_mon_container"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/widget_timetable_col_bg"
+                android:orientation="vertical"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/col_mon_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="MON"
+                    android:textColor="#14B8A6"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/col_mon_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="F2F"
+                    android:textColor="#94A3B8"
+                    android:textSize="7.5sp"
+                    android:textStyle="bold" />
+
+                <!-- Slot 1 -->
+                <LinearLayout
+                    android:id="@+id/mon_slot_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/mon_slot_1_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="11:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/mon_slot_1_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="GEE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 2 -->
+                <LinearLayout
+                    android:id="@+id/mon_slot_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/mon_slot_2_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="12:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/mon_slot_2_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="TECH"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 3 -->
+                <LinearLayout
+                    android:id="@+id/mon_slot_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/mon_slot_3_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/mon_slot_3_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="IT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 4 -->
+                <LinearLayout
+                    android:id="@+id/mon_slot_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/mon_slot_4_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="4:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/mon_slot_4_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="CS"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 5 -->
+                <LinearLayout
+                    android:id="@+id/mon_slot_5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/mon_slot_5_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="6:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/mon_slot_5_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="LAB"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Tuesday Column -->
+            <LinearLayout
+                android:id="@+id/col_tue_container"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/widget_timetable_col_bg"
+                android:orientation="vertical"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/col_tue_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="TUE"
+                    android:textColor="#14B8A6"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/col_tue_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="F2F"
+                    android:textColor="#94A3B8"
+                    android:textSize="7.5sp"
+                    android:textStyle="bold" />
+
+                <!-- Slot 1 -->
+                <LinearLayout
+                    android:id="@+id/tue_slot_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/tue_slot_1_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="11:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/tue_slot_1_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="GEE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 2 -->
+                <LinearLayout
+                    android:id="@+id/tue_slot_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/tue_slot_2_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/tue_slot_2_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="IT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 3 -->
+                <LinearLayout
+                    android:id="@+id/tue_slot_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/tue_slot_3_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="3:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/tue_slot_3_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="MATH"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 4 -->
+                <LinearLayout
+                    android:id="@+id/tue_slot_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/tue_slot_4_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="4:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/tue_slot_4_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="PHY"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 5 -->
+                <LinearLayout
+                    android:id="@+id/tue_slot_5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/tue_slot_5_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="6:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/tue_slot_5_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="ENG"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Wednesday Column -->
+            <LinearLayout
+                android:id="@+id/col_wed_container"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/widget_timetable_col_bg"
+                android:orientation="vertical"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/col_wed_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="WED"
+                    android:textColor="#14B8A6"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/col_wed_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="F2F"
+                    android:textColor="#94A3B8"
+                    android:textSize="7.5sp"
+                    android:textStyle="bold" />
+
+                <!-- Slot 1 -->
+                <LinearLayout
+                    android:id="@+id/wed_slot_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/wed_slot_1_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="11:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/wed_slot_1_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="GEE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 2 -->
+                <LinearLayout
+                    android:id="@+id/wed_slot_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/wed_slot_2_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="12:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/wed_slot_2_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="TECH"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 3 -->
+                <LinearLayout
+                    android:id="@+id/wed_slot_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/wed_slot_3_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/wed_slot_3_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="IT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 4 -->
+                <LinearLayout
+                    android:id="@+id/wed_slot_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/wed_slot_4_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="4:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/wed_slot_4_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="CS"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 5 -->
+                <LinearLayout
+                    android:id="@+id/wed_slot_5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/wed_slot_5_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="6:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/wed_slot_5_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="LAB"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Thursday Column -->
+            <LinearLayout
+                android:id="@+id/col_thu_container"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/widget_timetable_col_bg"
+                android:orientation="vertical"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/col_thu_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="THU"
+                    android:textColor="#14B8A6"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/col_thu_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="F2F"
+                    android:textColor="#94A3B8"
+                    android:textSize="7.5sp"
+                    android:textStyle="bold" />
+
+                <!-- Slot 1 -->
+                <LinearLayout
+                    android:id="@+id/thu_slot_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/thu_slot_1_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/thu_slot_1_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="MATH"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 2 -->
+                <LinearLayout
+                    android:id="@+id/thu_slot_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/thu_slot_2_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="3:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/thu_slot_2_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="IT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 3 -->
+                <LinearLayout
+                    android:id="@+id/thu_slot_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/thu_slot_3_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="4:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/thu_slot_3_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="PHY"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 4 -->
+                <LinearLayout
+                    android:id="@+id/thu_slot_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/thu_slot_4_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="6:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/thu_slot_4_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="ENG"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 5 -->
+                <LinearLayout
+                    android:id="@+id/thu_slot_5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/thu_slot_5_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="8:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/thu_slot_5_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="NET"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Friday Column -->
+            <LinearLayout
+                android:id="@+id/col_fri_container"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="2dp"
+                android:background="@drawable/widget_timetable_col_bg"
+                android:orientation="vertical"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/col_fri_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="FRI"
+                    android:textColor="#14B8A6"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/col_fri_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="F2F"
+                    android:textColor="#94A3B8"
+                    android:textSize="7.5sp"
+                    android:textStyle="bold" />
+
+                <!-- Slot 1 -->
+                <LinearLayout
+                    android:id="@+id/fri_slot_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/fri_slot_1_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/fri_slot_1_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="MATH"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 2 -->
+                <LinearLayout
+                    android:id="@+id/fri_slot_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/fri_slot_2_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="4:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/fri_slot_2_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="IT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 3 -->
+                <LinearLayout
+                    android:id="@+id/fri_slot_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/fri_slot_3_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="6:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/fri_slot_3_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="IT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 4 -->
+                <LinearLayout
+                    android:id="@+id/fri_slot_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/fri_slot_4_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="7:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/fri_slot_4_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="CS"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 5 -->
+                <LinearLayout
+                    android:id="@+id/fri_slot_5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/fri_slot_5_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="8:30"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/fri_slot_5_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="LAB"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Saturday Column -->
+            <LinearLayout
+                android:id="@+id/col_sat_container"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/widget_timetable_col_bg"
+                android:orientation="vertical"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/col_sat_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="SAT"
+                    android:textColor="#14B8A6"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/col_sat_mode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="F2F"
+                    android:textColor="#94A3B8"
+                    android:textSize="7.5sp"
+                    android:textStyle="bold" />
+
+                <!-- Slot 1 -->
+                <LinearLayout
+                    android:id="@+id/sat_slot_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/sat_slot_1_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="8:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/sat_slot_1_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="GEE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 2 -->
+                <LinearLayout
+                    android:id="@+id/sat_slot_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/sat_slot_2_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="10:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/sat_slot_2_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="IT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 3 -->
+                <LinearLayout
+                    android:id="@+id/sat_slot_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/sat_slot_3_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/sat_slot_3_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="MATH"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 4 -->
+                <LinearLayout
+                    android:id="@+id/sat_slot_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/sat_slot_4_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="3:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/sat_slot_4_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="PHY"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Slot 5 -->
+                <LinearLayout
+                    android:id="@+id/sat_slot_5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/widget_timetable_slot_bg"
+                    android:orientation="vertical"
+                    android:padding="1dp"
+                    android:visibility="gone">
+                    <TextView
+                        android:id="@+id/sat_slot_5_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="5:00"
+                        android:textColor="#14B8A6"
+                        android:textSize="7.5sp" />
+                    <TextView
+                        android:id="@+id/sat_slot_5_subj"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="ENG"
+                        android:textColor="#FFFFFF"
+                        android:textSize="8.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Footer -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/timetable_footer_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tap to view full timetable"
+            android:textColor="#14B8A6"
+            android:textSize="9.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/timetable_footer_brand"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reminder Hub"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
+    </LinearLayout>
+
+</LinearLayout>

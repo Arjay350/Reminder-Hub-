@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_bg">#141A2E</color>
+    <color name="widget_card_bg">#1E294B</color>
+    <color name="widget_primary">#14B8A6</color>
+    <color name="widget_accent">#0D9488</color>
+    <color name="widget_text_primary">#FFFFFF</color>
+    <color name="widget_text_secondary">#94A3B8</color>
+    <color name="widget_border">#242E4C</color>
+    <color name="white">#FFFFFF</color>
+    <color name="notification_color">#6366F1</color>
+</resources>
