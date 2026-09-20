@@ -9,6 +9,7 @@
 import 'package:file_picker_web/file_picker_web.dart';
 import 'package:flutter_secure_storage_web/flutter_secure_storage_web.dart';
 import 'package:flutter_timezone/flutter_timezone_web.dart';
+import 'package:pdfx/src/renderer/web/pdfx_plugin.dart';
 import 'package:permission_handler_html/permission_handler_html.dart';
 import 'package:share_plus/src/share_plus_web.dart';
 import 'package:url_launcher_web/url_launcher_web.dart';
@@ -19,6 +20,7 @@ void registerPlugins([final Registrar? pluginRegistrar]) {
   FilePickerWeb.registerWith(registrar);
   FlutterSecureStorageWeb.registerWith(registrar);
   FlutterTimezonePlugin.registerWith(registrar);
+  PdfxPlugin.registerWith(registrar);
   WebPermissionHandler.registerWith(registrar);
   SharePlusWebPlugin.registerWith(registrar);
   UrlLauncherPlugin.registerWith(registrar);

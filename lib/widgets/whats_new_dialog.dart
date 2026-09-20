@@ -63,6 +63,13 @@ class WhatsNewRegistry {
               'School schedules, reminders, bills, and AI reset alerts now use more reliable scheduling with Android alarm fallbacks.',
         ),
         WhatsNewItem(
+          icon: Icons.menu_book_rounded,
+          iconColor: Color(0xFF8B5CF6),
+          title: 'Offline Study Materials',
+          description:
+              'Import PDF, DOCX, TXT, and image materials, then generate rule-based reviewers, quizzes, and flashcards entirely on your device.',
+        ),
+        WhatsNewItem(
           icon: Icons.refresh_rounded,
           iconColor: Color(0xFF14B8A6),
           title: 'Fresh Reminders Hub List Updates',

@@ -39,6 +39,12 @@ dependencies:
   shimmer: ^3.0.0
   lottie: ^3.1.2
   flutter_timezone: ^5.1.0
+  archive: ^4.3.0
+  xml: ^7.0.1
+  syncfusion_flutter_pdf: ^34.2.8
+  google_mlkit_text_recognition: ^0.17.1
+  path: ^1.9.1
+  pdfx: ^2.11.0
 
 dev_dependencies:
   flutter_test:

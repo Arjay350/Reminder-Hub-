@@ -298,6 +298,13 @@ class AboutScreen extends StatelessWidget {
                   isDark,
                 ),
                 _featureItem(
+                  Icons.menu_book_rounded,
+                  const Color(0xFF8B5CF6),
+                  'Offline Study Materials',
+                  'Import study files and create local reviewers, quizzes, and flashcards without cloud services.',
+                  isDark,
+                ),
+                _featureItem(
                   Icons.security_rounded,
                   const Color(0xFF10B981),
                   'Offline-First & Biometric Lock',
