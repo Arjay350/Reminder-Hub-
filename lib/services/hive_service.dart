@@ -2,13 +2,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/app_models.dart';
+import '../models/study_models.dart';
+import '../models/study_material_models.dart';
 
 class HiveService {
   static final HiveService instance = HiveService._internal();
   HiveService._internal();
 
   // Data version for migrations
-  static const int currentDataVersion = 4;
+  static const int currentDataVersion = 5;
 
   Box<String>? _remindersBox;
   Box<String>? _schoolClassesBox;
@@ -18,6 +20,12 @@ class HiveService {
   Box<String>? _gasPurchasesBox;
   Box<String>? _suppliersBox;
   Box<String>? _settingsBox;
+  Box<String>? _studyMethodsBox;
+  Box<String>? _studyHistoryBox;
+  Box<String>? _studyTimerBox;
+  Box<String>? _studySettingsBox;
+  Box<String>? _studySubjectsBox;
+  Box<String>? _studyMaterialsBox;
   bool _initialized = false;
 
   Future<void> init() async {
@@ -33,6 +41,12 @@ class HiveService {
     _gasPurchasesBox = await Hive.openBox<String>('gas_purchases');
     _suppliersBox = await Hive.openBox<String>('suppliers');
     _settingsBox = await Hive.openBox<String>('settings');
+    _studyMethodsBox = await Hive.openBox<String>('study_methods');
+    _studyHistoryBox = await Hive.openBox<String>('study_history');
+    _studyTimerBox = await Hive.openBox<String>('study_timer');
+    _studySettingsBox = await Hive.openBox<String>('study_settings');
+    _studySubjectsBox = await Hive.openBox<String>('study_subjects');
+    _studyMaterialsBox = await Hive.openBox<String>('study_materials');
     _initialized = true;
 
     // Run migrations after all boxes are opened
@@ -90,6 +104,9 @@ class HiveService {
       debugPrint(
         'Migration v3->v4: AI accounts resetSchedule migrated to Exact Date/Time',
       );
+    }
+    if (fromVersion < 5) {
+      debugPrint('Migration v4->v5: Study module defaults initialized safely.');
     }
   }
 
@@ -387,6 +404,132 @@ class HiveService {
   }
 
   // --- Clear All Data ---
+  // --- Study Methods ---
+  List<StudyMethod> getStudyMethods() {
+    if (_studyMethodsBox == null) return [];
+    return _readRecords(_studyMethodsBox!, StudyMethod.fromJson);
+  }
+
+  Future<void> saveStudyMethod(StudyMethod method) async {
+    await ensureInitialized();
+    await _studyMethodsBox!.put(method.id, jsonEncode(method.toJson()));
+    await _studyMethodsBox!.flush();
+  }
+
+  Future<void> deleteStudyMethod(String id) async {
+    await ensureInitialized();
+    await _studyMethodsBox!.delete(id);
+    await _studyMethodsBox!.flush();
+  }
+
+  // --- Study Settings ---
+  StudySettings getStudySettings() {
+    if (_studySettingsBox == null || _studySettingsBox!.isEmpty) {
+      return StudySettings();
+    }
+    final raw = _studySettingsBox!.get('current_study_settings');
+    if (raw == null || raw.trim().isEmpty) {
+      return StudySettings();
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return StudySettings();
+      return StudySettings.fromJson(decoded);
+    } catch (_) {
+      return StudySettings();
+    }
+  }
+
+  Future<void> saveStudySettings(StudySettings settings) async {
+    await ensureInitialized();
+    final safeSettings = StudySettings.fromJson(settings.toJson());
+    await _studySettingsBox!.put(
+      'current_study_settings',
+      jsonEncode(safeSettings.toJson()),
+    );
+    await _studySettingsBox!.flush();
+  }
+
+  // --- Study Timer State ---
+  StudyTimerState? getStudyTimerState() {
+    if (_studyTimerBox == null || _studyTimerBox!.isEmpty) return null;
+    final raw = _studyTimerBox!.get('current_timer_state');
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return null;
+      return StudyTimerState.fromJson(decoded);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveStudyTimerState(StudyTimerState state) async {
+    await ensureInitialized();
+    await _studyTimerBox!.put(
+      'current_timer_state',
+      jsonEncode(state.toJson()),
+    );
+    await _studyTimerBox!.flush();
+  }
+
+  Future<void> clearStudyTimerState() async {
+    await ensureInitialized();
+    await _studyTimerBox!.delete('current_timer_state');
+    await _studyTimerBox!.flush();
+  }
+
+  List<String> getStudySubjects() {
+    if (_studySubjectsBox == null) return [];
+    return _studySubjectsBox!.values
+        .map((subject) => subject.trim())
+        .where((subject) => subject.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> saveStudySubject(String subject) async {
+    final normalized = subject.trim();
+    if (normalized.isEmpty) return;
+    await ensureInitialized();
+    final exists = getStudySubjects().any(
+      (item) => item.toLowerCase() == normalized.toLowerCase(),
+    );
+    if (exists) return;
+    await _studySubjectsBox!.put(normalized, normalized);
+    await _studySubjectsBox!.flush();
+  }
+
+  // --- Study History ---
+  List<StudySessionRecord> getStudyHistory() {
+    if (_studyHistoryBox == null) return [];
+    return _readRecords(_studyHistoryBox!, StudySessionRecord.fromJson);
+  }
+
+  Future<void> saveStudyHistoryRecord(StudySessionRecord record) async {
+    await ensureInitialized();
+    await _studyHistoryBox!.put(record.id, jsonEncode(record.toJson()));
+    await _studyHistoryBox!.flush();
+  }
+
+  List<StudyMaterial> getStudyMaterials() {
+    if (_studyMaterialsBox == null) return [];
+    final materials = _readRecords(_studyMaterialsBox!, StudyMaterial.fromJson);
+    materials.sort((a, b) => b.importedAt.compareTo(a.importedAt));
+    return materials;
+  }
+
+  Future<void> saveStudyMaterial(StudyMaterial material) async {
+    await ensureInitialized();
+    await _studyMaterialsBox!.put(material.id, jsonEncode(material.toJson()));
+    await _studyMaterialsBox!.flush();
+  }
+
+  Future<void> deleteStudyMaterial(String id) async {
+    await ensureInitialized();
+    await _studyMaterialsBox!.delete(id);
+    await _studyMaterialsBox!.flush();
+  }
+
   Future<void> clearAll() async {
     await ensureInitialized();
     await _remindersBox?.clear();
@@ -397,6 +540,12 @@ class HiveService {
     await _gasPurchasesBox?.clear();
     await _suppliersBox?.clear();
     await _settingsBox?.clear();
+    await _studyMethodsBox?.clear();
+    await _studyHistoryBox?.clear();
+    await _studyTimerBox?.clear();
+    await _studySettingsBox?.clear();
+    await _studySubjectsBox?.clear();
+    await _studyMaterialsBox?.clear();
     await _remindersBox?.flush();
     await _schoolClassesBox?.flush();
     await _aiAccountsBox?.flush();
@@ -405,5 +554,11 @@ class HiveService {
     await _gasPurchasesBox?.flush();
     await _suppliersBox?.flush();
     await _settingsBox?.flush();
+    await _studyMethodsBox?.flush();
+    await _studyHistoryBox?.flush();
+    await _studyTimerBox?.flush();
+    await _studySettingsBox?.flush();
+    await _studySubjectsBox?.flush();
+    await _studyMaterialsBox?.flush();
   }
 }
