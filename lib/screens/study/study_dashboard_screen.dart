@@ -1245,17 +1245,9 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
                 children: [
                   Expanded(
                     flex: 2,
-                    child: FilledButton.icon(
+                    child: _TimerControlButton(
+                      isRunning: state.isRunning,
                       onPressed: state.isRunning ? _pause : _resume,
-                      icon: Icon(
-                        state.isRunning
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                      ),
-                      label: Text(state.isRunning ? 'Pause' : 'Resume'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1401,6 +1393,96 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
       keyboardType: TextInputType.number,
       onChanged: (_) => onChanged?.call(),
       decoration: InputDecoration(labelText: label),
+    );
+  }
+}
+
+class _TimerControlButton extends StatefulWidget {
+  const _TimerControlButton({
+    required this.isRunning,
+    required this.onPressed,
+  });
+
+  final bool isRunning;
+  final VoidCallback onPressed;
+
+  @override
+  State<_TimerControlButton> createState() => _TimerControlButtonState();
+}
+
+class _TimerControlButtonState extends State<_TimerControlButton> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = widget.isRunning ? 'Pause Timer' : 'Resume Timer';
+    final icon = widget.isRunning
+        ? Icons.pause_rounded
+        : Icons.play_arrow_rounded;
+
+    return Listener(
+      onPointerDown: (_) => _setPressed(true),
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: AnimatedScale(
+        scale: _pressed ? .97 : 1,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF5B5BD6).withValues(alpha: .24),
+                blurRadius: 13,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: FilledButton.icon(
+            onPressed: widget.onPressed,
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: Icon(icon, key: ValueKey(icon), size: 21),
+            ),
+            label: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, .12),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: Text(
+                label,
+                key: ValueKey(label),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF5B5BD6),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
