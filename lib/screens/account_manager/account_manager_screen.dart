@@ -333,10 +333,13 @@ class _AccountManagerScreenState extends State<AccountManagerScreen> {
                                           ],
                                         ),
                                         const SizedBox(height: 12),
-                                        PasswordTextField(
-                                          password: account.password,
-                                          label: 'Password credential',
-                                        ),
+                                        if (account.password.trim().isNotEmpty)
+                                          PasswordTextField(
+                                            password: account.password,
+                                            label: 'Password credential',
+                                          )
+                                        else
+                                          const Text('No password saved'),
                                         const SizedBox(height: 12),
                                         Row(
                                           children: [
@@ -522,7 +525,10 @@ class _AccountManagerScreenState extends State<AccountManagerScreen> {
             if (account.email.isNotEmpty)
               _detailRow('Email', account.email, isDark),
             const SizedBox(height: 8),
-            PasswordTextField(password: account.password, label: 'Password'),
+            if (account.password.trim().isNotEmpty)
+              PasswordTextField(password: account.password, label: 'Password')
+            else
+              const Text('No password saved'),
             if (account.website.isNotEmpty) ...[
               const SizedBox(height: 12),
               _detailRow('Website URL', account.website, isDark),

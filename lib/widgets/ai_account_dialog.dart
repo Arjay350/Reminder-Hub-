@@ -670,6 +670,8 @@ class _AIAccountDialogState extends State<AIAccountDialog> {
       resetSchedule: _resetSchedule,
       renewalDate: _renewalDate,
       notes: _notes,
+      resetState: widget.account?.resetState ?? 'none',
+      resetCooldownUntil: widget.account?.resetCooldownUntil,
     );
 
     await HiveService.instance.saveAIAccount(account);

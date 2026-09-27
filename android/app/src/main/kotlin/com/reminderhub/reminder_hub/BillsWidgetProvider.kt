@@ -221,6 +221,8 @@ class BillsWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_header_bar, billsPendingIntent)
             views.setOnClickPendingIntent(R.id.widget_btn_view_bills, billsPendingIntent)
+            views.setOnClickPendingIntent(R.id.bills_widget_root, billsPendingIntent)
+            views.setOnClickPendingIntent(R.id.widget_bill_hero, billsPendingIntent)
 
             // 2. Setup Manual Refresh PendingIntent
             val refreshIntent = Intent(context, BillsWidgetProvider::class.java).apply {
@@ -283,43 +285,87 @@ class BillsWidgetProvider : AppWidgetProvider() {
                         }
                     }
 
-                    // Set Header texts
-                    views.setTextViewText(R.id.widget_header_title, "ReminderHub Bills")
+                    // One high-signal bill at a glance; all values come from the saved bill payload.
+                    views.setTextViewText(R.id.widget_header_title, "BILLS")
+                    val outstandingCount = overdueCount + unpaidCount + upcomingCount
                     views.setTextViewText(
                         R.id.widget_date_subtitle,
-                        if (totalBills == 0) formattedDate else "$formattedDate • $totalBills ${if (totalBills == 1) "Bill" else "Bills"}"
+                        if (outstandingCount == 0) "ALL CLEAR" else "$outstandingCount TO TRACK"
+                    )
+                    views.setTextViewText(
+                        R.id.widget_footer_info,
+                        when {
+                            totalBills == 0 -> "Nothing needs your attention"
+                            outstandingCount == 0 -> "✓ All bills paid"
+                            else -> "$outstandingCount outstanding ${if (outstandingCount == 1) "bill" else "bills"}"
+                        }
                     )
 
-                    // Footer
-                    val footerText = when {
-                        totalBills == 0 -> "No bills tracked"
-                        overdueCount > 0 -> "$totalBills Bills • $overdueCount Overdue"
-                        unpaidCount > 0 -> "$totalBills Bills • $unpaidCount Unpaid"
-                        upcomingCount > 0 -> "$totalBills Bills • $upcomingCount Upcoming"
-                        else -> "$totalBills Bills • All Paid"
-                    }
-                    views.setTextViewText(R.id.widget_footer_info, footerText)
-                    views.setTextViewText(R.id.widget_footer_brand, "ReminderHub")
+                    val prioritizedBill = (0 until billsArray.length())
+                        .map { billsArray.getJSONObject(it) }
+                        .firstOrNull { recomputeBillStatus(it) != "paid" }
+                        ?: if (billsArray.length() > 0) billsArray.getJSONObject(0) else null
 
-                    // Empty state toggle
-                    if (billsArray.length() == 0) {
-                        views.setViewVisibility(R.id.widget_empty_layout, View.VISIBLE)
-                        views.setViewVisibility(R.id.widget_bills_list, View.GONE)
+                    if (prioritizedBill == null) {
+                        views.setTextViewText(R.id.widget_bill_amount, "✓")
+                        views.setTextViewText(R.id.widget_bill_name, "You're all caught up")
+                        views.setTextViewText(R.id.widget_bill_due_status, "NO BILLS TO TRACK")
                     } else {
-                        views.setViewVisibility(R.id.widget_empty_layout, View.GONE)
-                        views.setViewVisibility(R.id.widget_bills_list, View.VISIBLE)
+                        val status = recomputeBillStatus(prioritizedBill)
+                        val amount = prioritizedBill.optDouble("amount", 0.0)
+                        val name = prioritizedBill.optString("name", "Bill")
+                        val dueIso = prioritizedBill.optString(
+                            "dueDateIso",
+                            prioritizedBill.optString("rawDueDateIso", "")
+                        )
+                        val dueDate = parseIsoDate(dueIso)
+                        val daysUntilDue = dueDate?.let { due ->
+                            val dueDay = Calendar.getInstance().apply {
+                                time = due
+                                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                            }
+                            val today = Calendar.getInstance().apply {
+                                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                            }
+                            ((dueDay.timeInMillis - today.timeInMillis) / (24 * 60 * 60 * 1000L)).toInt()
+                        }
+                        val dueStatus = when (status) {
+                            "overdue" -> "OVERDUE${daysUntilDue?.let { " • ${-it} ${if (it == -1) "DAY" else "DAYS"}" } ?: ""}"
+                            "paid" -> "✓ PAID"
+                            else -> when (daysUntilDue) {
+                                0 -> "DUE TODAY"
+                                1 -> "DUE TOMORROW"
+                                null -> "UPCOMING"
+                                else -> if (daysUntilDue < 0) "OVERDUE" else "DUE IN $daysUntilDue DAYS"
+                            }
+                        }
+                        views.setTextViewText(R.id.widget_bill_amount, "₱${String.format(Locale.US, "%,.2f", amount)}")
+                        views.setTextViewText(R.id.widget_bill_name, name)
+                        views.setTextViewText(R.id.widget_bill_due_status, dueStatus)
                     }
+                    views.setViewVisibility(R.id.widget_empty_layout, View.GONE)
+                    views.setViewVisibility(R.id.widget_bills_list, View.GONE)
 
                 } catch (e: Exception) {
                     Log.w(TAG, "updateAppWidget parse error: $e")
-                    views.setTextViewText(R.id.widget_header_title, "ReminderHub Bills")
+                    views.setTextViewText(R.id.widget_header_title, "BILLS")
                     views.setTextViewText(R.id.widget_date_subtitle, formattedDate)
+                    views.setTextViewText(R.id.widget_bill_amount, "—")
+                    views.setTextViewText(R.id.widget_bill_name, "Bills unavailable")
+                    views.setTextViewText(R.id.widget_bill_due_status, "OPEN REMINDERHUB TO REFRESH")
+                    views.setTextViewText(R.id.widget_footer_info, "Tap to review your bills")
                     views.setViewVisibility(R.id.widget_empty_layout, View.VISIBLE)
                     views.setViewVisibility(R.id.widget_bills_list, View.GONE)
                 }
             } else {
-                views.setTextViewText(R.id.widget_header_title, "ReminderHub Bills")
+                views.setTextViewText(R.id.widget_header_title, "BILLS")
                 views.setTextViewText(R.id.widget_date_subtitle, formattedDate)
+                views.setTextViewText(R.id.widget_bill_amount, "✓")
+                views.setTextViewText(R.id.widget_bill_name, "You're all caught up")
+                views.setTextViewText(R.id.widget_bill_due_status, "NO BILLS TO TRACK")
+                views.setTextViewText(R.id.widget_footer_info, "Nothing needs your attention")
                 views.setViewVisibility(R.id.widget_empty_layout, View.VISIBLE)
                 views.setViewVisibility(R.id.widget_bills_list, View.GONE)
             }

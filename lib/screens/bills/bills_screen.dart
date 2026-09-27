@@ -153,9 +153,10 @@ class _BillsScreenState extends State<BillsScreen> {
           Expanded(
             child: filtered.isEmpty
                 ? EmptyState(
-                    title: 'No Bills Logged',
-                    message:
-                        'Keep track of electricity, internet, rent & water payments',
+                    title: _bills.isEmpty ? 'No bills yet' : 'All caught up',
+                    message: _bills.isEmpty
+                        ? 'Add your first bill to keep upcoming payments in view.'
+                        : 'There are no bills in this view right now.',
                     icon: Icons.receipt_outlined,
                     actionLabel: 'Add Bill',
                     onAction: _openAddDialog,
@@ -173,6 +174,25 @@ class _BillsScreenState extends State<BillsScreen> {
                         final displayDueDate = bill.getDisplayDueDate();
                         final isOverdue = displayStatus == 'overdue';
                         final isPaid = displayStatus == 'paid';
+                        final today = DateUtils.dateOnly(DateTime.now());
+                        final dueDay = DateUtils.dateOnly(displayDueDate);
+                        final daysUntilDue = dueDay.difference(today).inDays;
+                        final urgencyColor = isOverdue
+                            ? Colors.red
+                            : isPaid
+                            ? Colors.green
+                            : daysUntilDue <= 3
+                            ? Colors.orange
+                            : Colors.blue;
+                        final urgencyLabel = isPaid
+                            ? 'PAID'
+                            : isOverdue
+                            ? 'OVERDUE BY ${-daysUntilDue}D'
+                            : daysUntilDue == 0
+                            ? 'DUE TODAY'
+                            : daysUntilDue <= 3
+                            ? 'DUE IN ${daysUntilDue}D'
+                            : 'UPCOMING';
 
                         return AnimationConfiguration.staggeredList(
                           position: index,
@@ -251,46 +271,86 @@ class _BillsScreenState extends State<BillsScreen> {
                                           size: 22,
                                         ),
                                       ),
-                                      title: Row(
+                                      title: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Expanded(
-                                            child: Text(
-                                              bill.name,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
-                                                decoration: isPaid
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
-                                                color: isPaid
-                                                    ? Colors.grey
-                                                    : null,
-                                              ),
-                                            ),
-                                          ),
-                                          if (bill.isRecurring)
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 2,
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  Formatters.formatCurrency(
+                                                    bill.amount,
                                                   ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFF10B981,
-                                                ).withValues(alpha: 0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                bill.repeat,
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF10B981),
+                                                  style: TextStyle(
+                                                    color: isPaid
+                                                        ? Colors.grey
+                                                        : null,
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w800,
+                                                    letterSpacing: -.4,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
+                                              AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 250,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 3,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: urgencyColor
+                                                      .withValues(alpha: .12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  urgencyLabel,
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: urgencyColor,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  bill.name,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                    decoration: isPaid
+                                                        ? TextDecoration
+                                                              .lineThrough
+                                                        : null,
+                                                    color: isPaid
+                                                        ? Colors.grey
+                                                        : null,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (bill.isRecurring)
+                                                Text(
+                                                  bill.repeat,
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF10B981),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                       subtitle: Padding(
@@ -302,12 +362,7 @@ class _BillsScreenState extends State<BillsScreen> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              '${Formatters.formatCurrency(bill.amount)} • Due ${Formatters.formatDate(displayDueDate)}'
-                                              '${isOverdue
-                                                  ? ' • ⚠ OVERDUE'
-                                                  : displayStatus == 'upcoming'
-                                                  ? ' • UPCOMING'
-                                                  : ''}',
+                                              'Due ${Formatters.formatDate(displayDueDate)}',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: isOverdue
@@ -322,6 +377,41 @@ class _BillsScreenState extends State<BillsScreen> {
                                                     : FontWeight.normal,
                                               ),
                                             ),
+                                            if (!isPaid)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 7,
+                                                  right: 12,
+                                                ),
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  child: TweenAnimationBuilder<double>(
+                                                    tween: Tween(
+                                                      end: isOverdue
+                                                          ? 1.0
+                                                          : ((7 - daysUntilDue) /
+                                                                    7)
+                                                                .clamp(0.0, 1.0),
+                                                    ),
+                                                    duration: const Duration(
+                                                      milliseconds: 500,
+                                                    ),
+                                                    curve: Curves.easeOutCubic,
+                                                    builder: (context, value, _) =>
+                                                        LinearProgressIndicator(
+                                                          value: value,
+                                                          minHeight: 4,
+                                                          color: urgencyColor,
+                                                          backgroundColor:
+                                                              urgencyColor
+                                                                  .withValues(
+                                                                    alpha: .12,
+                                                                  ),
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
                                             if (bill.paymentHistory.isNotEmpty)
                                               Padding(
                                                 padding: const EdgeInsets.only(
@@ -340,20 +430,40 @@ class _BillsScreenState extends State<BillsScreen> {
                                           ],
                                         ),
                                       ),
-                                      isThreeLine:
-                                          bill.paymentHistory.isNotEmpty,
+                                      isThreeLine: true,
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           IconButton(
-                                            icon: Icon(
-                                              isPaid
-                                                  ? Icons.check_circle_rounded
-                                                  : Icons
-                                                        .radio_button_unchecked_rounded,
-                                              color: isPaid
-                                                  ? Colors.green
-                                                  : Colors.grey,
+                                            style: IconButton.styleFrom(
+                                              backgroundColor: isPaid
+                                                  ? Colors.green.withValues(
+                                                      alpha: .12,
+                                                    )
+                                                  : urgencyColor.withValues(
+                                                      alpha: .10,
+                                                    ),
+                                            ),
+                                            icon: AnimatedSwitcher(
+                                              duration: const Duration(
+                                                milliseconds: 220,
+                                              ),
+                                              transitionBuilder:
+                                                  (child, animation) =>
+                                                      ScaleTransition(
+                                                        scale: animation,
+                                                        child: child,
+                                                      ),
+                                              child: Icon(
+                                                isPaid
+                                                    ? Icons.check_circle_rounded
+                                                    : Icons
+                                                          .radio_button_unchecked_rounded,
+                                                key: ValueKey(isPaid),
+                                                color: isPaid
+                                                    ? Colors.green
+                                                    : Colors.grey,
+                                              ),
                                             ),
                                             tooltip: isPaid
                                                 ? 'Mark as Unpaid'
@@ -361,24 +471,45 @@ class _BillsScreenState extends State<BillsScreen> {
                                             onPressed: () =>
                                                 _togglePaidStatus(bill),
                                           ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.edit_outlined,
-                                              size: 20,
-                                              color: isDark
-                                                  ? Colors.grey.shade400
-                                                  : Colors.grey.shade700,
+                                          PopupMenuButton<String>(
+                                            tooltip: 'Bill options',
+                                            onSelected: (value) {
+                                              if (value == 'edit') {
+                                                _openEditDialog(bill);
+                                              } else if (value == 'delete') {
+                                                _deleteBill(bill);
+                                              }
+                                            },
+                                            itemBuilder: (_) => const [
+                                              PopupMenuItem(
+                                                value: 'edit',
+                                                child: ListTile(
+                                                  leading: Icon(
+                                                    Icons.edit_outlined,
+                                                  ),
+                                                  title: Text('Edit bill'),
+                                                  contentPadding:
+                                                      EdgeInsets.zero,
+                                                ),
+                                              ),
+                                              PopupMenuItem(
+                                                value: 'delete',
+                                                child: ListTile(
+                                                  leading: Icon(
+                                                    Icons.delete_outline,
+                                                  ),
+                                                  title: Text('Delete bill'),
+                                                  contentPadding:
+                                                      EdgeInsets.zero,
+                                                ),
+                                              ),
+                                            ],
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(8),
+                                              child: Icon(
+                                                Icons.more_vert_rounded,
+                                              ),
                                             ),
-                                            onPressed: () =>
-                                                _openEditDialog(bill),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              color: Colors.red,
-                                              size: 20,
-                                            ),
-                                            onPressed: () => _deleteBill(bill),
                                           ),
                                         ],
                                       ),
@@ -442,6 +573,7 @@ class _BillsScreenState extends State<BillsScreen> {
         await WidgetService.instance.updateBillsWidget();
       } catch (_) {}
       _loadBills();
+      if (mounted) _showPaymentFeedback('Marked as unpaid');
       return;
     }
 
@@ -454,6 +586,7 @@ class _BillsScreenState extends State<BillsScreen> {
         await WidgetService.instance.updateBillsWidget();
       } catch (_) {}
       _loadBills();
+      if (mounted) _showPaymentFeedback('Bill marked as paid');
       return;
     }
 
@@ -498,6 +631,25 @@ class _BillsScreenState extends State<BillsScreen> {
     }
 
     _loadBills();
+    if (mounted) _showPaymentFeedback('Payment recorded');
+  }
+
+  void _showPaymentFeedback(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              Text(message),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   /// Shows confirmation dialog explaining the recurring-bill lifecycle before

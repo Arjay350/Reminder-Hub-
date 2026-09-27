@@ -329,7 +329,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                     todayClasses.sortBy { it.startMinutes }
 
                     // Set Header texts
-                    views.setTextViewText(R.id.widget_header_title, "Today\'s Classes")
+                    views.setTextViewText(R.id.widget_header_title, "SCHOOL")
                     views.setTextViewText(
                         R.id.widget_date_subtitle,
                         if (todayClasses.isEmpty()) formattedDate else "$formattedDate • ${todayClasses.size} ${if (todayClasses.size == 1) "Class" else "Classes"}"
@@ -479,13 +479,13 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
 
                 } catch (e: Exception) {
                     Log.w(TAG, "updateAppWidget parse error: $e")
-                    views.setTextViewText(R.id.widget_header_title, "Today\'s Classes")
+                    views.setTextViewText(R.id.widget_header_title, "SCHOOL")
                     views.setTextViewText(R.id.widget_date_subtitle, formattedDate)
                     views.setViewVisibility(R.id.widget_empty_layout, View.VISIBLE)
                     views.setViewVisibility(R.id.widget_classes_list, View.GONE)
                 }
             } else {
-                views.setTextViewText(R.id.widget_header_title, "Today\'s Classes")
+                views.setTextViewText(R.id.widget_header_title, "SCHOOL")
                 views.setTextViewText(R.id.widget_date_subtitle, formattedDate)
                 views.setViewVisibility(R.id.widget_empty_layout, View.VISIBLE)
                 views.setViewVisibility(R.id.widget_classes_list, View.GONE)
@@ -493,14 +493,21 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
 
             // 6. Handle Responsive Sizing (Small / Medium / Large widgets)
             val minHeight = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) ?: 160
-            if (minHeight < 120) {
+            val minWidth = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) ?: 250
+            if (minHeight < 140) {
                 // Compact / Small Widget mode
                 views.setViewVisibility(R.id.widget_section_header_layout, View.GONE)
                 views.setViewVisibility(R.id.widget_list_container, View.GONE)
+                views.setViewVisibility(R.id.widget_class_teacher_layout, View.GONE)
             } else {
                 // Medium / Large Widget mode (Scrollable List Enabled)
                 views.setViewVisibility(R.id.widget_section_header_layout, View.VISIBLE)
                 views.setViewVisibility(R.id.widget_list_container, View.VISIBLE)
+            }
+            if (minWidth < 210) {
+                views.setViewVisibility(R.id.widget_btn_view_schedule, View.GONE)
+            } else {
+                views.setViewVisibility(R.id.widget_btn_view_schedule, View.VISIBLE)
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)

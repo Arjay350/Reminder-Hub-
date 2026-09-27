@@ -7,7 +7,6 @@
     android:orientation="vertical"
     android:padding="12dp">
 
-    <!-- Header - mirrors school widget header for RemoteViews compatibility -->
     <LinearLayout
         android:id="@+id/widget_header_bar"
         android:layout_width="match_parent"
@@ -18,168 +17,142 @@
         <FrameLayout
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:background="@drawable/widget_icon_circle_bg"
-            android:layout_marginEnd="8dp">
-
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/widget_icon_circle_bg">
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="17dp"
+                android:layout_height="17dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_receipt_outline"
-                android:contentDescription="Bills Icon" />
+                android:contentDescription="Bills"
+                android:src="@drawable/ic_receipt_outline" />
         </FrameLayout>
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/widget_header_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:text="BILLS"
+            android:textColor="#F8FAFC"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/widget_header_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Reminder Hub Bills"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/widget_date_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Monday, Aug 28"
-                android:textColor="#94A3B8"
-                android:textSize="10.5sp" />
-        </LinearLayout>
-
-        <!-- View Bills action button -->
-        <LinearLayout
-            android:id="@+id/widget_btn_view_bills"
+        <TextView
+            android:id="@+id/widget_date_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/widget_action_button_bg"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="9dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="7dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="View Bills"
-                android:textColor="#A78BFA"
-                android:textSize="10.5sp"
-                android:textStyle="bold" />
-
-            <ImageView
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:layout_marginStart="2dp"
-                android:src="@drawable/ic_widget_arrow_right"
-                android:contentDescription="Go" />
-        </LinearLayout>
+            android:text="UPCOMING"
+            android:textColor="#94A3B8"
+            android:textSize="9sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Divider -->
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="7dp"
-        android:layout_marginBottom="7dp"
-        android:background="#242E4C"
-        android:contentDescription="divider" />
-
-    <!-- Bills List + Empty - FrameLayout so ListView and empty can overlap, required for setEmptyView -->
-    <FrameLayout
-        android:id="@+id/widget_list_container"
+    <LinearLayout
+        android:id="@+id/widget_bill_hero"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_bills_bg"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="10dp">
 
-        <ListView
-            android:id="@+id/widget_bills_list"
+        <TextView
+            android:id="@+id/widget_bill_amount"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:divider="@android:color/transparent"
-            android:dividerHeight="5dp"
-            android:clipToPadding="false"
-            android:scrollbars="none"
-            android:visibility="visible" />
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="₱0.00"
+            android:textColor="#FFFFFF"
+            android:textSize="27sp"
+            android:textStyle="bold" />
 
-        <!-- Empty State -->
-        <LinearLayout
-            android:id="@+id/widget_empty_layout"
+        <TextView
+            android:id="@+id/widget_bill_name"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:visibility="gone"
-            android:padding="16dp">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="No upcoming bill"
+            android:textColor="#E2E8F0"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
-            <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:src="@drawable/ic_receipt_outline"
-                android:contentDescription="No bills" />
+        <TextView
+            android:id="@+id/widget_bill_due_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="DUE SOON"
+            android:textColor="#FBBF24"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="No bills tracked"
-                android:textSize="12sp"
-                android:textColor="#94A3B8"
-                android:textStyle="bold"
-                android:gravity="center" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Add bills in Reminder Hub to see them here"
-                android:textSize="10.5sp"
-                android:textColor="#64748B"
-                android:gravity="center" />
-        </LinearLayout>
-    </FrameLayout>
-
-    <!-- Footer row with refresh -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:layout_marginTop="7dp"
         android:gravity="center_vertical"
-        android:paddingTop="6dp">
+        android:orientation="horizontal">
 
         <TextView
             android:id="@+id/widget_footer_info"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="3 Bills • 2 Unpaid"
-            android:textSize="10.5sp"
-            android:textColor="#94A3B8"
-            android:gravity="start" />
+            android:text="No bills to track"
+            android:textColor="#CBD5E1"
+            android:textSize="10sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_footer_brand"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-                android:text="Reminder Hub"
-            android:textSize="10.5sp"
-            android:textStyle="bold"
-            android:textColor="#14B8A6"
-            android:gravity="end" />
-
-        <ImageView
-            android:id="@+id/widget_btn_refresh"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:layout_marginStart="8dp"
-            android:src="@drawable/ic_widget_refresh"
-            android:contentDescription="Refresh" />
+            android:text="ReminderHub  ›"
+            android:textColor="#5EEAD4"
+            android:textSize="10sp"
+            android:textStyle="bold" />
     </LinearLayout>
+
+    <!-- Retained for compatibility with the existing RemoteViews service. -->
+    <ListView
+        android:id="@+id/widget_bills_list"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/widget_empty_layout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <FrameLayout
+        android:id="@+id/widget_list_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <ImageView
+        android:id="@+id/widget_btn_refresh"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <TextView
+        android:id="@+id/widget_footer_brand"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+    <LinearLayout
+        android:id="@+id/widget_btn_view_bills"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 </LinearLayout>

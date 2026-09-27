@@ -525,6 +525,30 @@ class _UserAccountDialogState extends State<UserAccountDialog> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
+    if (_password.isNotEmpty && !kIsWeb) {
+      try {
+        final authenticated = await _localAuthentication.authenticate(
+          localizedReason: 'Authenticate to save this password',
+          options: const AuthenticationOptions(
+            biometricOnly: true,
+            stickyAuth: true,
+            sensitiveTransaction: true,
+          ),
+        );
+        if (!authenticated || !mounted) return;
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Password was not saved because authentication failed.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     final now = DateTime.now();
     final account = UserAccount(
       id: widget.account?.id ?? const Uuid().v4(),
@@ -550,33 +574,7 @@ class _UserAccountDialogState extends State<UserAccountDialog> {
     if (mounted) Navigator.pop(context, account);
   }
 
-  Future<void> _togglePasswordVisibility() async {
-    if (!_obscurePassword) {
-      setState(() => _obscurePassword = true);
-      return;
-    }
-
-    if (kIsWeb) return;
-    try {
-      final authenticated = await _localAuthentication.authenticate(
-        localizedReason: 'Authenticate to reveal the saved password',
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-          sensitiveTransaction: true,
-        ),
-      );
-      if (authenticated && mounted) {
-        setState(() => _obscurePassword = false);
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Biometric authentication is unavailable.'),
-          ),
-        );
-      }
-    }
+  void _togglePasswordVisibility() {
+    setState(() => _obscurePassword = !_obscurePassword);
   }
 }

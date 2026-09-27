@@ -5,58 +5,48 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="10dp">
 
-    <!-- 1. Header Bar -->
     <LinearLayout
         android:id="@+id/widget_header_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
-
-        <!-- App / School Icon in Circle -->
         <FrameLayout
             android:id="@+id/widget_icon_circle"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:background="@drawable/widget_icon_circle_bg"
-            android:layout_marginEnd="8dp">
-
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/widget_icon_circle_bg">
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_widget_school"
-                android:contentDescription="School Icon" />
+                android:contentDescription="School"
+                android:src="@drawable/ic_widget_school" />
         </FrameLayout>
-
-        <!-- Title & Date Column -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
-
             <TextView
                 android:id="@+id/widget_header_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Today\'s Classes"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:text="SCHOOL"
+                android:textColor="#F8FAFC"
+                android:textSize="12sp"
                 android:textStyle="bold" />
-
             <TextView
                 android:id="@+id/widget_date_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Monday, Aug 24"
+                android:text="TODAY"
                 android:textColor="#94A3B8"
-                android:textSize="10.5sp" />
+                android:textSize="9sp" />
         </LinearLayout>
-
-        <!-- "View Schedule" Action Button -->
         <LinearLayout
             android:id="@+id/widget_btn_view_schedule"
             android:layout_width="wrap_content"
@@ -64,71 +54,56 @@
             android:background="@drawable/widget_action_button_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="9dp"
+            android:paddingStart="8dp"
             android:paddingTop="4dp"
             android:paddingEnd="7dp"
             android:paddingBottom="4dp">
-
             <TextView
                 android:id="@+id/widget_btn_view_schedule_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="View Schedule"
-                android:textColor="#A78BFA"
-                android:textSize="10.5sp"
+                android:text="Schedule"
+                android:textColor="#5EEAD4"
+                android:textSize="9sp"
                 android:textStyle="bold" />
-
             <ImageView
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="11dp"
+                android:layout_height="11dp"
                 android:layout_marginStart="2dp"
-                android:src="@drawable/ic_widget_arrow_right"
-                android:contentDescription="Go" />
+                android:contentDescription="Open schedule"
+                android:src="@drawable/ic_widget_arrow_right" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Divider -->
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="7dp"
-        android:layout_marginBottom="7dp"
-        android:background="#242E4C"
-        android:contentDescription="divider" />
-
-    <!-- 2. Highlighted Active / Upcoming / Completed Card -->
     <LinearLayout
         android:id="@+id/widget_highlight_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/widget_current_class_bg"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/widget_next_class_bg"
         android:orientation="vertical"
-        android:paddingStart="10dp"
+        android:paddingStart="11dp"
         android:paddingTop="8dp"
-        android:paddingEnd="10dp"
+        android:paddingEnd="11dp"
         android:paddingBottom="8dp">
-
-        <!-- Status Badge & Countdown Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
             <TextView
                 android:id="@+id/widget_status_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/widget_badge_current"
+                android:background="@drawable/widget_badge_next"
                 android:paddingStart="7dp"
                 android:paddingTop="2dp"
                 android:paddingEnd="7dp"
                 android:paddingBottom="2dp"
-                android:text="CURRENT CLASS"
+                android:text="NEXT CLASS"
                 android:textColor="#FFFFFF"
-                android:textSize="9sp"
+                android:textSize="8sp"
                 android:textStyle="bold" />
-
             <TextView
                 android:id="@+id/widget_class_time"
                 android:layout_width="0dp"
@@ -137,191 +112,164 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="06:30 PM – 07:30 PM"
-                android:textColor="#94A3B8"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-
-            <!-- Real-time Countdown Badge (e.g. Ends in 16m / Starts in 45m) -->
+                android:text="2:00 PM – 3:00 PM"
+                android:textColor="#CBD5E1"
+                android:textSize="10sp" />
             <LinearLayout
                 android:id="@+id/widget_countdown_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
-
                 <ImageView
                     android:id="@+id/widget_countdown_icon"
                     android:layout_width="11dp"
                     android:layout_height="11dp"
-                    android:src="@drawable/ic_widget_clock"
-                    android:contentDescription="Timer" />
-
+                    android:contentDescription="Countdown"
+                    android:src="@drawable/ic_widget_clock" />
                 <TextView
                     android:id="@+id/widget_countdown"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="3dp"
-                    android:text="Ends in 16m"
-                    android:textColor="#22C55E"
-                    android:textSize="10.5sp"
+                    android:text="Starts in 38 min"
+                    android:textColor="#C4B5FD"
+                    android:textSize="9sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
-
-        <!-- Subject Name -->
         <TextView
             android:id="@+id/widget_class_subject"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
+            android:layout_marginTop="5dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Usable Security"
+            android:text="Database Management"
             android:textColor="#FFFFFF"
-            android:textSize="14sp"
+            android:textSize="17sp"
             android:textStyle="bold" />
-
-        <!-- Details Row (Room / Mode, Teacher) -->
         <LinearLayout
             android:id="@+id/widget_class_details_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:gravity="center_vertical"
+            android:layout_marginTop="4dp"
             android:orientation="horizontal">
-
-            <!-- Room / Mode layout -->
             <LinearLayout
                 android:id="@+id/widget_class_room_layout"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
-
                 <ImageView
                     android:id="@+id/widget_class_room_icon"
-                    android:layout_width="11dp"
-                    android:layout_height="11dp"
-                    android:src="@drawable/ic_widget_location"
-                    android:contentDescription="Room" />
-
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:contentDescription="Room"
+                    android:src="@drawable/ic_widget_location" />
                 <TextView
                     android:id="@+id/widget_class_room"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="3dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:text="Room: Q-5207F"
-                    android:textColor="#94A3B8"
-                    android:textSize="10.5sp" />
+                    android:text="Room 302"
+                    android:textColor="#CBD5E1"
+                    android:textSize="10sp" />
             </LinearLayout>
-
-            <!-- Teacher layout -->
             <LinearLayout
                 android:id="@+id/widget_class_teacher_layout"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
+                android:layout_weight="1"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
-
                 <ImageView
                     android:id="@+id/widget_class_teacher_icon"
-                    android:layout_width="11dp"
-                    android:layout_height="11dp"
-                    android:src="@drawable/ic_widget_person"
-                    android:contentDescription="Teacher" />
-
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:contentDescription="Instructor"
+                    android:src="@drawable/ic_widget_person" />
                 <TextView
                     android:id="@+id/widget_class_teacher"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="3dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:text="Prof. Santos"
+                    android:text="Instructor"
                     android:textColor="#94A3B8"
-                    android:textSize="10.5sp" />
+                    android:textSize="9sp" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 3. Section Title Row (e.g. Other classes Monday (7):) -->
     <LinearLayout
         android:id="@+id/widget_section_header_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="7dp"
-        android:layout_marginBottom="4dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
-
         <TextView
             android:id="@+id/widget_section_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Other classes Monday (7):"
-            android:textColor="#94A3B8"
-            android:textSize="10.5sp"
+            android:text="TODAY’S TIMELINE"
+            android:textColor="#CBD5E1"
+            android:textSize="9sp"
             android:textStyle="bold" />
-
-        <!-- Refresh Button -->
         <ImageView
             android:id="@+id/widget_btn_refresh"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:src="@drawable/ic_widget_refresh"
-            android:contentDescription="Refresh Widget" />
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:contentDescription="Refresh schedule"
+            android:src="@drawable/ic_widget_refresh" />
     </LinearLayout>
 
-    <!-- 4. Scrollable Classes List & Empty View Container -->
     <FrameLayout
         android:id="@+id/widget_list_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <!-- Empty State Layout -->
-        <LinearLayout
-            android:id="@+id/widget_empty_layout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/widget_empty_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="No classes scheduled for today"
-                android:textColor="#94A3B8"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/widget_empty_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Tap to open Reminder Hub schedule"
-                android:textColor="#64748B"
-                android:textSize="10.5sp" />
-        </LinearLayout>
-
-        <!-- True Scrollable ListView (Interactive collection) -->
+        android:layout_weight="1"
+        android:layout_marginTop="4dp">
         <ListView
             android:id="@+id/widget_classes_list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:clipToPadding="false"
             android:divider="@android:color/transparent"
-            android:dividerHeight="5dp"
-            android:scrollbars="none"
-            android:nestedScrollingEnabled="true"
-            android:visibility="visible" />
+            android:dividerHeight="3dp"
+            android:scrollbars="none" />
+        <LinearLayout
+            android:id="@+id/widget_empty_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="5dp"
+            android:visibility="gone">
+            <TextView
+                android:id="@+id/widget_empty_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="You’re all caught up"
+                android:textColor="#5EEAD4"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/widget_empty_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Nothing else scheduled today"
+                android:textColor="#94A3B8"
+                android:textSize="10sp" />
+        </LinearLayout>
     </FrameLayout>
-
 </LinearLayout>

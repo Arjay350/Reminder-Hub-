@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+.gradle-user-home/
+build/
+.dart_tool/
+.gradle/

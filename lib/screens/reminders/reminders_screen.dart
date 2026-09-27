@@ -329,6 +329,13 @@ class _RemindersScreenState extends State<RemindersScreen>
       final bDt = _parseEntryDateTime(b.date, b.time);
       return aDt.compareTo(bDt);
     });
+    final completedCount = _allEntries
+        .where((entry) => entry.isCompleted)
+        .length;
+    final openCount = _allEntries.length - completedCount;
+    final completionProgress = _allEntries.isEmpty
+        ? 0.0
+        : completedCount / _allEntries.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -355,6 +362,58 @@ class _RemindersScreenState extends State<RemindersScreen>
         color: theme.colorScheme.primary,
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(
+                    alpha: isDark ? .12 : .07,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.checklist_rounded,
+                          color: theme.colorScheme.primary,
+                          size: 19,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$openCount open',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        Text(
+                          '$completedCount completed',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(end: completionProgress),
+                        duration: const Duration(milliseconds: 450),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, _) =>
+                            LinearProgressIndicator(value: value, minHeight: 5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             // Search Field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -427,10 +486,18 @@ class _RemindersScreenState extends State<RemindersScreen>
             Expanded(
               child: filtered.isEmpty
                   ? EmptyState(
-                      title: 'No reminders found',
+                      title: _searchQuery.isNotEmpty
+                          ? 'No matches found'
+                          : _selectedFilter == 'Pending' &&
+                                _selectedCategory == 'All'
+                          ? 'You’re all caught up!'
+                          : 'No reminders here',
                       message: _searchQuery.isNotEmpty
                           ? 'No reminders matching "$_searchQuery"'
-                          : 'Create your first reminder to keep track of tasks, bills, AI resets & school.',
+                          : _selectedFilter == 'Pending' &&
+                                _selectedCategory == 'All'
+                          ? 'Nothing needs your attention right now. Add a reminder whenever you need one.'
+                          : 'There are no ${_selectedFilter.toLowerCase()} reminders in this view.',
                       icon: Icons.notifications_off_outlined,
                       actionLabel: 'Add Reminder',
                       onAction: _openAddDialog,
@@ -501,18 +568,26 @@ class _RemindersScreenState extends State<RemindersScreen>
                                         title: Row(
                                           children: [
                                             Expanded(
-                                              child: Text(
-                                                e.title,
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 15,
-                                                  decoration: e.isCompleted
-                                                      ? TextDecoration
-                                                            .lineThrough
-                                                      : null,
-                                                  color: e.isCompleted
-                                                      ? Colors.grey
-                                                      : null,
+                                              child: AnimatedOpacity(
+                                                duration: const Duration(
+                                                  milliseconds: 220,
+                                                ),
+                                                opacity: e.isCompleted
+                                                    ? .55
+                                                    : 1,
+                                                child: Text(
+                                                  e.title,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
+                                                    decoration: e.isCompleted
+                                                        ? TextDecoration
+                                                              .lineThrough
+                                                        : null,
+                                                    color: e.isCompleted
+                                                        ? Colors.grey
+                                                        : null,
+                                                  ),
                                                 ),
                                               ),
                                             ),

@@ -219,11 +219,6 @@ class _SchoolScheduleScreenState extends State<SchoolScheduleScreen> {
               ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.tune_rounded),
-            tooltip: 'Configure Weekly Learning Modes',
-            onPressed: _openWeeklyLearningModesConfig,
-          ),
         ],
       ),
       body: Column(
@@ -462,7 +457,27 @@ class _SchoolScheduleScreenState extends State<SchoolScheduleScreen> {
             const SizedBox(height: 4),
 
             // Class List grouped by Day (DAY -> CLASS MODE -> CLASSES)
-            Expanded(child: _buildDayBasedClassList(isDark, todayWeekday)),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(.035, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: KeyedSubtree(
+                  key: ValueKey(_selectedDayFilter),
+                  child: _buildDayBasedClassList(isDark, todayWeekday),
+                ),
+              ),
+            ),
           ],
         ],
       ),
