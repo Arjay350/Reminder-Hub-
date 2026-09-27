@@ -10,6 +10,7 @@ import 'screens/school_schedule/school_schedule_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'services/hive_service.dart';
 import 'services/notification_service.dart';
+import 'services/password_route_observer.dart';
 import 'services/widget_service.dart';
 
 void main() async {
@@ -111,6 +112,7 @@ class _ReminderHubAppState extends State<ReminderHubApp>
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
+      navigatorObservers: [passwordRouteObserver],
       home: MainNavigationShell(onThemeChanged: _onThemeChanged),
     );
   }
@@ -236,7 +238,10 @@ class _MainNavigationShellState extends State<MainNavigationShell>
       ),
       const CalendarScreen(key: ValueKey('calendar')),
       RemindersScreen(key: ValueKey('reminders_$_currentIndex')),
-      const AIAccountsScreen(key: ValueKey('ai_accounts')),
+      AIAccountsScreen(
+        key: const ValueKey('ai_accounts'),
+        isScreenActive: _currentIndex == 3,
+      ),
       SettingsScreen(
         key: const ValueKey('settings'),
         onThemeChanged: widget.onThemeChanged,
@@ -343,13 +348,28 @@ class PinLockScreen extends StatefulWidget {
 
 class _PinLockScreenState extends State<PinLockScreen> {
   final TextEditingController _pinController = TextEditingController();
+  final FocusNode _pinFocusNode = FocusNode();
   String _errorText = '';
   bool _canCheckBiometrics = false;
+  bool _isAuthenticating = false;
 
   @override
   void initState() {
     super.initState();
+    _pinController.addListener(_refreshPinIndicators);
     _initBiometricsAndPrompt();
+  }
+
+  @override
+  void dispose() {
+    _pinController.removeListener(_refreshPinIndicators);
+    _pinController.dispose();
+    _pinFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _refreshPinIndicators() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _initBiometricsAndPrompt() async {
@@ -365,6 +385,8 @@ class _PinLockScreenState extends State<PinLockScreen> {
   }
 
   Future<void> _promptBiometrics() async {
+    if (_isAuthenticating) return;
+    if (mounted) setState(() => _isAuthenticating = true);
     try {
       final success = await SecurityService.instance.authenticate(
         reason: 'Scan your fingerprint to unlock Reminder Hub',
@@ -374,6 +396,8 @@ class _PinLockScreenState extends State<PinLockScreen> {
       }
     } catch (_) {
       // Graceful fallback to PIN
+    } finally {
+      if (mounted) setState(() => _isAuthenticating = false);
     }
   }
 
@@ -382,91 +406,380 @@ class _PinLockScreenState extends State<PinLockScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.lock,
-                    size: 48,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Reminder Hub Locked',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Enter your 4-digit PIN or use Fingerprint Unlock to access offline data',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: 200,
-                  child: TextField(
-                    controller: _pinController,
-                    keyboardType: TextInputType.number,
-                    obscureText: true,
-                    maxLength: 4,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      letterSpacing: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    decoration: InputDecoration(
-                      errorText: _errorText.isEmpty ? null : _errorText,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    onChanged: (val) {
-                      if (val.length == 4) {
-                        _verify(val);
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => _verify(_pinController.text),
-                      icon: const Icon(Icons.key),
-                      label: const Text('Unlock with PIN'),
-                    ),
-                    if (_canCheckBiometrics) ...[
-                      const SizedBox(width: 12),
-                      IconButton.filledTonal(
-                        icon: const Icon(Icons.fingerprint, size: 24),
-                        tooltip: 'Use Fingerprint Unlock',
-                        onPressed: _promptBiometrics,
-                      ),
-                    ],
-                  ],
-                ),
-              ],
+      body: Stack(
+        children: [
+          Positioned(
+            top: -90,
+            right: -80,
+            child: _lockDecoration(
+              240,
+              theme.colorScheme.primary.withValues(alpha: .07),
             ),
           ),
-        ),
+          Positioned(
+            bottom: -110,
+            left: -90,
+            child: _lockDecoration(
+              280,
+              const Color(0xFF14B8A6).withValues(alpha: .06),
+            ),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 480),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) => Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, 14 * (1 - value)),
+                            child: child,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 96,
+                              height: 96,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: .12,
+                                ),
+                                borderRadius: BorderRadius.circular(32),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: .16,
+                                  ),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: .16,
+                                    ),
+                                    blurRadius: 32,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.lock_rounded,
+                                size: 44,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            Text(
+                              'ReminderHub Locked',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -.4,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Enter your 4-digit PIN or use Fingerprint Unlock to access offline data',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                height: 1.45,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _securityPill(
+                                  Icons.verified_user_outlined,
+                                  'SECURE',
+                                  const Color(0xFF6366F1),
+                                ),
+                                _securityPill(
+                                  Icons.lock_outline_rounded,
+                                  'PRIVATE',
+                                  const Color(0xFF8B5CF6),
+                                ),
+                                _securityPill(
+                                  Icons.phone_android_rounded,
+                                  'LOCAL',
+                                  const Color(0xFF14B8A6),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 30),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'ENTER YOUR PIN',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  letterSpacing: 1.1,
+                                  fontWeight: FontWeight.w800,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Material(
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: _pinFocusNode.requestFocus,
+                                child: Container(
+                                  height: 76,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: _errorText.isNotEmpty
+                                          ? theme.colorScheme.error
+                                          : theme.colorScheme.outlineVariant,
+                                    ),
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: List.generate(4, (index) {
+                                          final filled =
+                                              index < _pinController.text.length;
+                                          final active =
+                                              index ==
+                                              _pinController.text.length;
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 7,
+                                            ),
+                                            child: AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 180,
+                                              ),
+                                              width: 48,
+                                              height: 50,
+                                              decoration: BoxDecoration(
+                                                color: filled
+                                                    ? theme.colorScheme.primary
+                                                        .withValues(alpha: .10)
+                                                    : theme
+                                                          .colorScheme
+                                                          .surfaceContainerHighest
+                                                          .withValues(
+                                                            alpha: .45,
+                                                          ),
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                border: Border.all(
+                                                  color: active &&
+                                                          _errorText.isEmpty
+                                                      ? theme.colorScheme
+                                                          .primary
+                                                          .withValues(
+                                                            alpha: .7,
+                                                          )
+                                                      : theme.colorScheme
+                                                          .outlineVariant,
+                                                ),
+                                              ),
+                                              child: Center(
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(
+                                                    milliseconds: 180,
+                                                  ),
+                                                  width: filled ? 13 : 11,
+                                                  height: filled ? 13 : 11,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: filled
+                                                        ? theme.colorScheme
+                                                            .primary
+                                                        : theme
+                                                              .colorScheme
+                                                              .outlineVariant,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                      ),
+                                      Opacity(
+                                        opacity: 0.01,
+                                        child: TextField(
+                                          controller: _pinController,
+                                          focusNode: _pinFocusNode,
+                                          keyboardType: TextInputType.number,
+                                          obscureText: true,
+                                          maxLength: 4,
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: Colors.transparent,
+                                            fontSize: 1,
+                                          ),
+                                          cursorColor: Colors.transparent,
+                                          decoration: const InputDecoration(
+                                            counterText: '',
+                                            border: InputBorder.none,
+                                          ),
+                                          onChanged: (value) {
+                                            if (_errorText.isNotEmpty) {
+                                              setState(() => _errorText = '');
+                                            }
+                                            if (value.length == 4) {
+                                              _verify(value);
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              child: _errorText.isEmpty
+                                  ? const SizedBox(height: 26)
+                                  : Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        _errorText,
+                                        key: const ValueKey('pin_error'),
+                                        style: TextStyle(
+                                          color: theme.colorScheme.error,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 54,
+                              child: FilledButton.icon(
+                                onPressed: () => _verify(_pinController.text),
+                                icon: const Icon(Icons.key_rounded),
+                                label: const Text(
+                                  'Unlock with PIN',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF5B5BD6),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(17),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_canCheckBiometrics) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: OutlinedButton.icon(
+                                  onPressed: _isAuthenticating
+                                      ? null
+                                      : _promptBiometrics,
+                                  icon: AnimatedSwitcher(
+                                    duration: const Duration(
+                                      milliseconds: 180,
+                                    ),
+                                    child: _isAuthenticating
+                                        ? SizedBox(
+                                            key: const ValueKey('auth_progress'),
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: theme.colorScheme.primary,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.fingerprint_rounded,
+                                            key: const ValueKey('fingerprint'),
+                                            size: 24,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                  ),
+                                  label: Text(
+                                    _isAuthenticating
+                                        ? 'Waiting for fingerprint…'
+                                        : 'Unlock with Fingerprint',
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: theme.colorScheme.primary,
+                                    side: BorderSide(
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: .35),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(17),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _lockDecoration(double size, Color color) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+  );
+
+  Widget _securityPill(IconData icon, String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withValues(alpha: .15)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: .7,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Future<void> _verify(String enteredPin) async {
     final valid = await SecurityService.instance.verifyPin(enteredPin);
