@@ -800,7 +800,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListTile(
               leading: const Icon(Icons.smart_toy_outlined),
               title: const Text('No active resets'),
-              subtitle: const Text('Manage AI reset statuses'),
+              subtitle: const Text('Resets become active automatically at the saved time'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const AIAccountsScreen()),
@@ -817,8 +817,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: accounts.first.serviceColor,
               ),
               title: Text(label),
-              subtitle: Text('${accounts.length} Active'),
-              trailing: const Icon(Icons.chevron_right),
+              subtitle: Text(
+                '${accounts.length} Active · ${accounts.map((account) => account.accountName).join(', ')}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF31A24C),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              trailing: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: Color(0xFF31A24C), size: 18),
+                  SizedBox(width: 8),
+                  Icon(Icons.chevron_right),
+                ],
+              ),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => AIAccountsScreen(

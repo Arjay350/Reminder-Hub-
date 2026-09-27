@@ -322,14 +322,36 @@ class AIAccount {
   final String resetState;
   final DateTime? resetCooldownUntil;
 
-  String get currentResetStatus {
-    if (resetState == 'active') return 'Active';
-    if (resetState == 'cooldown' &&
-        resetCooldownUntil != null &&
-        resetCooldownUntil!.isAfter(DateTime.now())) {
-      return 'Cooldown';
-    }
-    return 'No Active Reset';
+  /// Availability follows the device's local clock; no saved/manual state
+  /// can override the scheduled reset.
+  String get currentResetStatus => _resetAt.isAfter(DateTime.now())
+      ? 'Cooldown'
+      : 'Active';
+
+  DateTime get _resetAt {
+    final time = _parsedResetTime;
+    return DateTime(
+      resetDate.year,
+      resetDate.month,
+      resetDate.day,
+      time.hour,
+      time.minute,
+    );
+  }
+
+  DateTime get _parsedResetTime {
+    final match = RegExp(
+      r'^\s*(\d{1,2}):(\d{2})\s*([ap]m)?\s*$',
+      caseSensitive: false,
+    ).firstMatch(resetTime);
+    if (match == null) return DateTime(0, 1, 1, 22);
+    var hour = int.parse(match.group(1)!);
+    final minute = int.parse(match.group(2)!);
+    final meridiem = match.group(3)?.toLowerCase();
+    if (meridiem == 'pm' && hour < 12) hour += 12;
+    if (meridiem == 'am' && hour == 12) hour = 0;
+    if (hour > 23 || minute > 59) return DateTime(0, 1, 1, 22);
+    return DateTime(0, 1, 1, hour, minute);
   }
 
   bool get isFreePlan => plan.toLowerCase() == 'free';

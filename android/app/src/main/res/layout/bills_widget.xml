@@ -145,11 +145,6 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:visibility="gone" />
-    <TextView
-        android:id="@+id/widget_footer_brand"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone" />
     <LinearLayout
         android:id="@+id/widget_btn_view_bills"
         android:layout_width="0dp"
