@@ -297,6 +297,8 @@ class AIAccount {
     String? resetSchedule,
     DateTime? renewalDate,
     required this.notes,
+    this.resetState = 'none',
+    this.resetCooldownUntil,
   }) : resetDate = resetDate ?? DateTime.now().add(const Duration(days: 30)),
        resetTime = resetTime ?? '10:00 PM',
        resetSchedule = resetSchedule ?? 'Exact Date/Time',
@@ -317,6 +319,18 @@ class AIAccount {
   final String resetSchedule; // backward compatible
   final DateTime renewalDate;
   final String notes;
+  final String resetState;
+  final DateTime? resetCooldownUntil;
+
+  String get currentResetStatus {
+    if (resetState == 'active') return 'Active';
+    if (resetState == 'cooldown' &&
+        resetCooldownUntil != null &&
+        resetCooldownUntil!.isAfter(DateTime.now())) {
+      return 'Cooldown';
+    }
+    return 'No Active Reset';
+  }
 
   bool get isFreePlan => plan.toLowerCase() == 'free';
   bool get isGoogleAuth => authMethod == 'Google';
@@ -336,6 +350,8 @@ class AIAccount {
     String? resetSchedule,
     DateTime? renewalDate,
     String? notes,
+    String? resetState,
+    DateTime? resetCooldownUntil,
   }) {
     return AIAccount(
       id: id ?? this.id,
@@ -351,6 +367,8 @@ class AIAccount {
       resetSchedule: resetSchedule ?? this.resetSchedule,
       renewalDate: renewalDate ?? this.renewalDate,
       notes: notes ?? this.notes,
+      resetState: resetState ?? this.resetState,
+      resetCooldownUntil: resetCooldownUntil ?? this.resetCooldownUntil,
     );
   }
 
@@ -368,6 +386,8 @@ class AIAccount {
     'resetSchedule': resetSchedule,
     'renewalDate': renewalDate.toIso8601String(),
     'notes': notes,
+    'resetState': resetState,
+    'resetCooldownUntil': resetCooldownUntil?.toIso8601String(),
   };
 
   factory AIAccount.fromJson(Map<String, dynamic> json) {
@@ -396,6 +416,10 @@ class AIAccount {
           ? DateTime.parse(json['renewalDate'] as String)
           : DateTime.now().add(const Duration(days: 30)),
       notes: (json['notes'] ?? '') as String,
+      resetState: (json['resetState'] ?? 'none') as String,
+      resetCooldownUntil: json['resetCooldownUntil'] is String
+          ? DateTime.tryParse(json['resetCooldownUntil'] as String)
+          : null,
     );
   }
 

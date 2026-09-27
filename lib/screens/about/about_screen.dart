@@ -279,8 +279,22 @@ class AboutScreen extends StatelessWidget {
                 _featureItem(
                   Icons.school_rounded,
                   const Color(0xFF14B8A6),
-                  'Monday–Saturday Timetable',
-                  'Support for Face-to-Face, Asynchronous, and Online class modes.',
+                  'School & Study Timer',
+                  'Manage class schedules and open the Pomodoro Study Timer from the School section.',
+                  isDark,
+                ),
+                _featureItem(
+                  Icons.dashboard_customize_rounded,
+                  const Color(0xFF8B5CF6),
+                  'Active AI Reset Dashboard',
+                  'See active reset counts grouped by provider and open each provider’s active accounts. Cooldown accounts stay off the Dashboard.',
+                  isDark,
+                ),
+                _featureItem(
+                  Icons.visibility_outlined,
+                  const Color(0xFF10B981),
+                  'Password Visibility Controls',
+                  'Eye buttons only reveal or hide saved passwords. Accounts without a saved password are identified clearly.',
                   isDark,
                 ),
                 _featureItem(
@@ -295,13 +309,6 @@ class AboutScreen extends StatelessWidget {
                   const Color(0xFFF59E0B),
                   'Bills & Gas Tracker',
                   'Track utilities, due dates, and household LPG consumption offline.',
-                  isDark,
-                ),
-                _featureItem(
-                  Icons.menu_book_rounded,
-                  const Color(0xFF8B5CF6),
-                  'Offline Study Materials',
-                  'Import study files and create local reviewers, quizzes, and flashcards without cloud services.',
                   isDark,
                 ),
                 _featureItem(

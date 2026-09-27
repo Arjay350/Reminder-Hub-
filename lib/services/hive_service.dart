@@ -3,14 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/app_models.dart';
 import '../models/study_models.dart';
-import '../models/study_material_models.dart';
 
 class HiveService {
   static final HiveService instance = HiveService._internal();
   HiveService._internal();
 
   // Data version for migrations
-  static const int currentDataVersion = 5;
+  static const int currentDataVersion = 6;
 
   Box<String>? _remindersBox;
   Box<String>? _schoolClassesBox;
@@ -25,7 +24,6 @@ class HiveService {
   Box<String>? _studyTimerBox;
   Box<String>? _studySettingsBox;
   Box<String>? _studySubjectsBox;
-  Box<String>? _studyMaterialsBox;
   bool _initialized = false;
 
   Future<void> init() async {
@@ -46,7 +44,6 @@ class HiveService {
     _studyTimerBox = await Hive.openBox<String>('study_timer');
     _studySettingsBox = await Hive.openBox<String>('study_settings');
     _studySubjectsBox = await Hive.openBox<String>('study_subjects');
-    _studyMaterialsBox = await Hive.openBox<String>('study_materials');
     _initialized = true;
 
     // Run migrations after all boxes are opened
@@ -511,25 +508,6 @@ class HiveService {
     await _studyHistoryBox!.flush();
   }
 
-  List<StudyMaterial> getStudyMaterials() {
-    if (_studyMaterialsBox == null) return [];
-    final materials = _readRecords(_studyMaterialsBox!, StudyMaterial.fromJson);
-    materials.sort((a, b) => b.importedAt.compareTo(a.importedAt));
-    return materials;
-  }
-
-  Future<void> saveStudyMaterial(StudyMaterial material) async {
-    await ensureInitialized();
-    await _studyMaterialsBox!.put(material.id, jsonEncode(material.toJson()));
-    await _studyMaterialsBox!.flush();
-  }
-
-  Future<void> deleteStudyMaterial(String id) async {
-    await ensureInitialized();
-    await _studyMaterialsBox!.delete(id);
-    await _studyMaterialsBox!.flush();
-  }
-
   Future<void> clearAll() async {
     await ensureInitialized();
     await _remindersBox?.clear();
@@ -545,7 +523,6 @@ class HiveService {
     await _studyTimerBox?.clear();
     await _studySettingsBox?.clear();
     await _studySubjectsBox?.clear();
-    await _studyMaterialsBox?.clear();
     await _remindersBox?.flush();
     await _schoolClassesBox?.flush();
     await _aiAccountsBox?.flush();
@@ -559,6 +536,5 @@ class HiveService {
     await _studyTimerBox?.flush();
     await _studySettingsBox?.flush();
     await _studySubjectsBox?.flush();
-    await _studyMaterialsBox?.flush();
   }
 }

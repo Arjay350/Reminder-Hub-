@@ -11,7 +11,7 @@ void main() {
     final release = WhatsNewRegistry.getRelease('1.3.1');
     expect(release, isNotNull);
     expect(release!.appTitle, 'Reminder Hub 1.3.1');
-    expect(release.items.length, 9);
+    expect(release.items.length, 12);
     expect(
       release.items.map((item) => item.title),
       containsAll(<String>[
@@ -23,7 +23,10 @@ void main() {
         'Widget Navigation Fixes',
         'Preserved Paid Bill History',
         'Removed Notification History',
-        'Offline Study Materials',
+        'School Hub and Study Timer',
+        'Active AI Resets by Provider',
+        'Clearer AI Reset Status',
+        'Password Visibility Controls',
       ]),
     );
   });

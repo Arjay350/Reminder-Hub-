@@ -39,7 +39,7 @@ class WhatsNewRegistry {
       releaseDate: '2026-09-11',
       title: 'What\'s New',
       appTitle: 'Reminder Hub 1.3.1',
-      subtitle: 'Portable backups and safer schedule sharing.',
+      subtitle: 'A simpler School hub and clearer AI reset tracking.',
       items: [
         WhatsNewItem(
           icon: Icons.backup_rounded,
@@ -61,13 +61,6 @@ class WhatsNewRegistry {
           title: 'Reliable Scheduled Notifications',
           description:
               'School schedules, reminders, bills, and AI reset alerts now use more reliable scheduling with Android alarm fallbacks.',
-        ),
-        WhatsNewItem(
-          icon: Icons.menu_book_rounded,
-          iconColor: Color(0xFF8B5CF6),
-          title: 'Offline Study Materials',
-          description:
-              'Import PDF, DOCX, TXT, and image materials, then generate rule-based reviewers, quizzes, and flashcards entirely on your device.',
         ),
         WhatsNewItem(
           icon: Icons.refresh_rounded,
@@ -103,6 +96,34 @@ class WhatsNewRegistry {
           title: 'Removed Notification History',
           description:
               'The unused notification history screen and records were removed while bill payment history was preserved.',
+        ),
+        WhatsNewItem(
+          icon: Icons.school_rounded,
+          iconColor: Color(0xFF14B8A6),
+          title: 'School Hub and Study Timer',
+          description:
+              'School now brings the timetable and Study Timer/Pomodoro together. The separate Study navigation item and Study Materials feature have been removed.',
+        ),
+        WhatsNewItem(
+          icon: Icons.dashboard_customize_rounded,
+          iconColor: Color(0xFF8B5CF6),
+          title: 'Active AI Resets by Provider',
+          description:
+              'The Dashboard groups active AI resets by provider and shows current counts. Tap a provider to see its active accounts; providers with only cooldown or inactive accounts are excluded.',
+        ),
+        WhatsNewItem(
+          icon: Icons.timer_rounded,
+          iconColor: Color(0xFF2563EB),
+          title: 'Clearer AI Reset Status',
+          description:
+              'AI Resets now show Active, Cooldown, or No Active Reset using each account’s saved status and cooldown time.',
+        ),
+        WhatsNewItem(
+          icon: Icons.visibility_outlined,
+          iconColor: Color(0xFF10B981),
+          title: 'Password Visibility Controls',
+          description:
+              'Eye buttons now only show or hide passwords. Password authentication stays in the save flow, and accounts without a saved password are clearly identified.',
         ),
       ],
     ),

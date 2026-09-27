@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/study_models.dart';
-import 'study_materials_screen.dart';
 import '../../services/study_service.dart';
 
 class StudyDashboardScreen extends StatefulWidget {
@@ -53,12 +52,13 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
     return formatStudyDuration(stats.totalStudyMinutesToday);
   }
 
-  void _openStudyTimer([String? subject]) {
-    Navigator.of(context).push(
+  Future<void> _openStudyTimer([String? subject]) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => StudyTimerScreen(initialSubject: subject),
       ),
     );
+    await _loadData();
   }
 
   Future<void> _addSubject() async {
@@ -95,167 +95,166 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final stats = _studyService.calculateStatistics();
+    final active = _activeState;
     return Scaffold(
-      appBar: AppBar(title: const Text('Study'), centerTitle: false),
+      appBar: AppBar(title: const Text('Focus')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _activeState != null && _activeState!.isRunning
-                            ? 'Continue Study Session'
-                            : 'Ready to focus?',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _activeState != null
-                            ? 'Subject: ${_activeState!.subject}'
-                            : 'Choose a method and start your next study block.',
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _openStudyTimer,
-                          icon: const Icon(Icons.play_arrow_rounded),
-                          label: Text(
-                            _activeState != null
-                                ? 'Continue Study Session'
-                                : 'Start Study Session',
-                          ),
-                        ),
-                      ),
-                    ],
+              _buildFocusHero(context, active),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: .55,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.library_books_outlined),
-                  title: const Text('Study Materials'),
-                  subtitle: const Text(
-                    'Import materials and generate local reviewers, quizzes, and flashcards.',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const StudyMaterialsScreen(),
-                      ),
-                    );
-                  },
+                child: Row(
+                  children: [
+                    _statMetric(
+                      'Sessions',
+                      '${stats.totalSessions}',
+                      Icons.bolt_rounded,
+                    ),
+                    _statDivider(context),
+                    _statMetric(
+                      'Streak',
+                      '${stats.currentStreak}d',
+                      Icons.local_fire_department_outlined,
+                    ),
+                    _statDivider(context),
+                    _statMetric(
+                      'Average',
+                      formatStudyDuration(stats.averageSessionDurationMinutes),
+                      Icons.av_timer_rounded,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Study Subjects',
+                    'Subjects',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  IconButton(
+                  TextButton.icon(
                     onPressed: _addSubject,
-                    tooltip: 'Add study subject',
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add'),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 5),
               if (_subjects.isEmpty)
-                const Card(
-                  child: ListTile(
-                    leading: Icon(Icons.link_rounded),
-                    title: Text('No subjects yet'),
-                    subtitle: Text(
-                      'Add a subject here or add classes in School Schedule.',
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: .48,
                     ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.menu_book_outlined),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'No subjects yet. Add one or create a class in School Schedule.',
+                        ),
+                      ),
+                    ],
                   ),
                 )
               else
-                ..._subjects.map(
-                  (subject) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: const Icon(Icons.menu_book_rounded),
-                      title: Text(subject),
-                      subtitle: const Text('Start a study session'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _openStudyTimer(subject),
+                Wrap(
+                  spacing: 9,
+                  runSpacing: 9,
+                  children: _subjects
+                      .map(
+                        (subject) => ActionChip(
+                          avatar: const Icon(
+                            Icons.menu_book_rounded,
+                            size: 17,
+                            color: Color(0xFF6366F1),
+                          ),
+                          label: Text(subject),
+                          onPressed: () => _openStudyTimer(subject),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(
+                              color: const Color(
+                                0xFF6366F1,
+                              ).withValues(alpha: .16),
+                            ),
+                          ),
+                          backgroundColor: const Color(
+                            0xFF6366F1,
+                          ).withValues(alpha: .07),
+                        ),
+                      )
+                      .toList(),
+                ),
+              const SizedBox(height: 26),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent sessions',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              const SizedBox(height: 12),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _statCard('Today', _todayMinutes),
-                  _statCard(
-                    'Sessions',
-                    '${_studyService.calculateStatistics().totalSessions}',
-                  ),
-                  _statCard(
-                    'Streak',
-                    '${_studyService.calculateStatistics().currentStreak} days',
-                  ),
-                  _statCard(
-                    'Average',
-                    formatStudyDuration(
-                      _studyService
-                          .calculateStatistics()
-                          .averageSessionDurationMinutes,
+                  Text(
+                    '$_todayMinutes today',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Text(
-                'Recent Sessions',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               if (_recentHistory.isEmpty)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text(
-                      'No study sessions yet. Start your first focus block.',
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: .48,
                     ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.spa_outlined, color: Color(0xFF6366F1)),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Your completed focus sessions will show up here.',
+                        ),
+                      ),
+                    ],
                   ),
                 )
               else
-                ..._recentHistory.map(
-                  (session) => Card(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: ListTile(
-                      leading: const Icon(Icons.menu_book_rounded),
-                      title: Text(session.subject),
-                      subtitle: Text(
-                        '${session.methodName} • ${formatStudyDuration(session.durationMinutes)}',
-                      ),
-                      trailing: Text('${session.completedSessions} sessions'),
-                    ),
+                ..._recentHistory.asMap().entries.map(
+                  (entry) => _buildSessionRow(
+                    context,
+                    entry.value,
+                    isLast: entry.key == _recentHistory.length - 1,
                   ),
                 ),
             ],
@@ -265,24 +264,193 @@ class _StudyDashboardScreenState extends State<StudyDashboardScreen> {
     );
   }
 
-  Widget _statCard(String label, String value) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(label, style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ],
+  Widget _buildFocusHero(BuildContext context, StudyTimerState? active) {
+    final theme = Theme.of(context);
+    final isRunning = active?.isRunning == true;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF312E81), Color(0xFF6366F1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'FOCUS FOR TODAY',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .16),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  active == null
+                      ? 'LOCAL TIMER'
+                      : isRunning
+                      ? buildStudyPhaseText(active.phase).toUpperCase()
+                      : 'PAUSED',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            active == null
+                ? _todayMinutes
+                : formatStudyClock(active.remainingDuration),
+            style: theme.textTheme.displaySmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1,
+            ),
+          ),
+          Text(
+            active == null
+                ? 'focused today'
+                : '${active.subject} · ${active.isRunning ? 'Stay focused' : 'Session paused'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.white.withValues(alpha: .82)),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _openStudyTimer,
+              icon: Icon(
+                active != null
+                    ? Icons.open_in_full_rounded
+                    : Icons.play_arrow_rounded,
+              ),
+              label: Text(
+                active != null ? 'Continue session' : 'Start focus session',
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF4338CA),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statMetric(String label, String value, IconData icon) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: const Color(0xFF6366F1), size: 18),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statDivider(BuildContext context) => Container(
+    width: 1,
+    height: 36,
+    color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .6),
+  );
+
+  Widget _buildSessionRow(
+    BuildContext context,
+    StudySessionRecord session, {
+    required bool isLast,
+  }) {
+    final theme = Theme.of(context);
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 24,
+            child: Column(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF6366F1),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 1,
+                      color: theme.colorScheme.outlineVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8, bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    session.subject,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${session.methodName} · ${formatStudyDuration(session.durationMinutes)} · ${session.completedSessions} sessions',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Text(
+            '${session.endedAt.hour.toString().padLeft(2, '0')}:${session.endedAt.minute.toString().padLeft(2, '0')}',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -394,6 +562,14 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     _stopTicker();
     setState(() => _state = updated);
     _studyService.saveActiveTimerState(updated);
+  }
+
+  void _skipPhase() {
+    if (_state == null || _state!.completed) return;
+    final updated = _studyService.skipPhase(_state!);
+    setState(() => _state = updated);
+    _studyService.saveActiveTimerState(updated);
+    _startTicker();
   }
 
   Future<void> _changeMode() async {
@@ -569,7 +745,7 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Session ready',
+                  'Ready to focus?',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -608,77 +784,230 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
 
     final method = state.method;
     final phaseName = buildStudyPhaseText(state.phase);
-    final progress = (state.currentSession / state.totalSessions).clamp(
+    final phaseSeconds = switch (state.phase) {
+      StudyPhase.study => method.studyDurationMinutes * 60,
+      StudyPhase.shortBreak => method.shortBreakDurationMinutes * 60,
+      StudyPhase.longBreak => method.longBreakDurationMinutes * 60,
+      StudyPhase.completed => 1,
+    };
+    final phaseProgress = (1 - state.remainingSeconds / phaseSeconds).clamp(
       0.0,
       1.0,
     );
+    final sessionProgress = (state.currentSession / state.totalSessions).clamp(
+      0.0,
+      1.0,
+    );
+    final phaseColor = studyPhaseColor(state.phase);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Study Timer')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                state.subject.toUpperCase(),
+                state.subject,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 _methodLabel(method),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                formatStudyClock(state.remainingDuration),
-                style: const TextStyle(
-                  fontSize: 54,
-                  fontWeight: FontWeight.bold,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                phaseName,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: studyPhaseColor(state.phase),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('Session ${state.currentSession} of ${state.totalSessions}'),
-              const SizedBox(height: 20),
-              LinearProgressIndicator(value: progress),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  if (!state.isRunning)
-                    ElevatedButton(
-                      onPressed: _resume,
-                      child: const Text('Resume'),
-                    )
-                  else
-                    ElevatedButton(
-                      onPressed: _pause,
-                      child: const Text('Pause'),
+              const SizedBox(height: 28),
+              Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutCubic,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: phaseColor.withValues(
+                      alpha: state.isRunning ? .10 : .05,
                     ),
-                  ElevatedButton(onPressed: _reset, child: const Text('Reset')),
-                  ElevatedButton(
-                    onPressed: _endSession,
-                    child: const Text('End Session'),
+                    boxShadow: state.isRunning
+                        ? [
+                            BoxShadow(
+                              color: phaseColor.withValues(alpha: .18),
+                              blurRadius: 28,
+                              spreadRadius: 4,
+                            ),
+                          ]
+                        : const [],
+                  ),
+                  child: SizedBox(
+                    width: 252,
+                    height: 252,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(end: phaseProgress),
+                      duration: const Duration(milliseconds: 900),
+                      curve: Curves.easeInOutCubic,
+                      builder: (context, progress, _) => Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox.expand(
+                            child: CircularProgressIndicator(
+                              value: progress,
+                              strokeWidth: 11,
+                              strokeCap: StrokeCap.round,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation(phaseColor),
+                            ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                transitionBuilder: (child, animation) =>
+                                    FadeTransition(
+                                      opacity: animation,
+                                      child: SlideTransition(
+                                        position: Tween<Offset>(
+                                          begin: const Offset(0, .12),
+                                          end: Offset.zero,
+                                        ).animate(animation),
+                                        child: child,
+                                      ),
+                                    ),
+                                child: Text(
+                                  formatStudyClock(state.remainingDuration),
+                                  key: ValueKey(state.remainingSeconds),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displaySmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 280),
+                                child: Text(
+                                  phaseName,
+                                  key: ValueKey(state.phase),
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        color: phaseColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                state.phase == StudyPhase.completed
+                                    ? 'SESSION COMPLETE'
+                                    : state.isRunning
+                                    ? (state.isStudyPhase
+                                          ? 'STAY FOCUSED'
+                                          : 'TAKE A BREAK')
+                                    : 'SESSION PAUSED',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(letterSpacing: 1.2),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Focus sessions',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(end: sessionProgress),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) =>
+                      LinearProgressIndicator(value: value, minHeight: 8),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Session ${state.currentSession} of ${state.totalSessions}',
+                textAlign: TextAlign.end,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed: state.isRunning ? _pause : _resume,
+                      icon: Icon(
+                        state.isRunning
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                      ),
+                      label: Text(state.isRunning ? 'Pause' : 'Resume'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _reset,
+                      icon: const Icon(Icons.replay_rounded),
+                      label: const Text('Reset'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              if (state.phase == StudyPhase.longBreak) ...[
-                const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                children: [
+                  TextButton.icon(
+                    onPressed: state.completed ? null : _skipPhase,
+                    icon: const Icon(Icons.skip_next_rounded),
+                    label: const Text('Skip phase'),
+                  ),
+                  TextButton.icon(
+                    onPressed: _endSession,
+                    icon: const Icon(Icons.stop_circle_outlined),
+                    label: const Text('End session'),
+                  ),
+                ],
+              ),
+              if (state.phase == StudyPhase.longBreak)
                 TextButton.icon(
                   onPressed: _changeMode,
                   icon: const Icon(Icons.tune_rounded),
                   label: const Text('Change Study Mode'),
                 ),
-              ],
             ],
           ),
         ),

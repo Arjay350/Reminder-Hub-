@@ -88,5 +88,6 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
         }
+
     }
 }

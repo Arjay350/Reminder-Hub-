@@ -8,7 +8,6 @@ import 'screens/home/home_screen.dart';
 import 'screens/reminders/reminders_screen.dart';
 import 'screens/school_schedule/school_schedule_screen.dart';
 import 'screens/settings/settings_screen.dart';
-import 'screens/study/study_dashboard_screen.dart';
 import 'services/hive_service.dart';
 import 'services/notification_service.dart';
 import 'services/widget_service.dart';
@@ -236,7 +235,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
       const CalendarScreen(key: ValueKey('calendar')),
-      const StudyDashboardScreen(key: ValueKey('study')),
       RemindersScreen(key: ValueKey('reminders_$_currentIndex')),
       const AIAccountsScreen(key: ValueKey('ai_accounts')),
       SettingsScreen(
@@ -272,11 +270,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                         icon: Icon(Icons.calendar_month_outlined),
                         selectedIcon: Icon(Icons.calendar_month),
                         label: Text('Calendar'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.menu_book_outlined),
-                        selectedIcon: Icon(Icons.menu_book),
-                        label: Text('Study'),
                       ),
                       NavigationRailDestination(
                         icon: Icon(Icons.notifications_none_outlined),
@@ -317,11 +310,6 @@ class _MainNavigationShellState extends State<MainNavigationShell>
                   icon: Icon(Icons.calendar_month_outlined),
                   selectedIcon: Icon(Icons.calendar_month),
                   label: 'Calendar',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.menu_book_outlined),
-                  selectedIcon: Icon(Icons.menu_book),
-                  label: 'Study',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.notifications_none_outlined),

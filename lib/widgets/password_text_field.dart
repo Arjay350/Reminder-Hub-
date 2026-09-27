@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -84,7 +84,7 @@ class _PasswordTextFieldState extends State<PasswordTextField> {
                 size: 20,
               ),
               tooltip: _obscured ? 'Show password' : 'Hide password',
-              onPressed: _obscured ? _authenticateAndShow : _hide,
+              onPressed: () => setState(() => _obscured = !_obscured),
             ),
 
           // Copy button
@@ -97,8 +97,6 @@ class _PasswordTextFieldState extends State<PasswordTextField> {
       ),
     );
   }
-
-  void _hide() => setState(() => _obscured = true);
 
   Future<void> _authenticateAndCopy() async {
     if (_authenticating) return;
@@ -142,54 +140,6 @@ class _PasswordTextFieldState extends State<PasswordTextField> {
       );
     } catch (_) {
       // Keep the password protected if authentication fails unexpectedly.
-    } finally {
-      if (mounted) setState(() => _authenticating = false);
-    }
-  }
-
-  Future<void> _authenticateAndShow() async {
-    setState(() => _authenticating = true);
-
-    try {
-      // Check if the device supports any kind of authentication
-      final canAuth =
-          await _localAuth.canCheckBiometrics ||
-          await _localAuth.isDeviceSupported();
-
-      if (!canAuth) {
-        // Graceful fallback: device has no biometric/PIN — reveal directly
-        if (mounted) setState(() => _obscured = false);
-        return;
-      }
-
-      final authenticated = await _localAuth.authenticate(
-        localizedReason: 'Verify your identity to reveal the password',
-        options: const AuthenticationOptions(
-          biometricOnly: false, // allow PIN/pattern as fallback
-          stickyAuth: true, // keep prompt if user minimises the app
-        ),
-      );
-
-      if (!mounted) return;
-
-      if (authenticated) {
-        setState(() => _obscured = false);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.fingerprint, color: Colors.white, size: 18),
-                SizedBox(width: 10),
-                Text('Authentication failed or cancelled'),
-              ],
-            ),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (_) {
-      // Any unexpected error — fail safe: keep password hidden
     } finally {
       if (mounted) setState(() => _authenticating = false);
     }
