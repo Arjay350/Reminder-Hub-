@@ -116,7 +116,7 @@ class WhatsNewRegistry {
           iconColor: Color(0xFF2563EB),
           title: 'Clearer AI Reset Status',
           description:
-              'AI Resets now show Active, Cooldown, or No Active Reset using each account’s saved status and cooldown time.',
+              'AI reset status is now calculated from each account’s saved reset date and time. Accounts become active automatically when the reset arrives.',
         ),
         WhatsNewItem(
           icon: Icons.visibility_outlined,

@@ -287,7 +287,7 @@ class AboutScreen extends StatelessWidget {
                   Icons.dashboard_customize_rounded,
                   const Color(0xFF8B5CF6),
                   'Active AI Reset Dashboard',
-                  'See active reset counts grouped by provider and open each provider’s active accounts. Cooldown accounts stay off the Dashboard.',
+                  'Reset availability follows each account’s saved local date and time. Accounts become active automatically when their reset arrives.',
                   isDark,
                 ),
                 _featureItem(

@@ -95,13 +95,15 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                     : '${_providerLabel(_selectedServiceFilter)} — Active Resets'
               : 'AI Accounts',
           style: TextStyle(fontWeight: FontWeight.bold),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
       body: Column(
         children: [
           // Service filter chips
           SizedBox(
-            height: 48,
+            height: 56,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -231,10 +233,17 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
-                                                  Row(
+                                                  Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 4,
+                                                    crossAxisAlignment:
+                                                        WrapCrossAlignment.center,
                                                     children: [
                                                       Text(
                                                         account.service,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                         style: TextStyle(
                                                           fontWeight:
                                                               FontWeight.bold,
@@ -243,8 +252,11 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                                               .serviceColor,
                                                         ),
                                                       ),
-                                                      const SizedBox(width: 8),
                                                       Container(
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                              maxWidth: 160,
+                                                            ),
                                                         padding:
                                                             const EdgeInsets.symmetric(
                                                               horizontal: 8,
@@ -263,6 +275,9 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                                         ),
                                                         child: Text(
                                                           account.accountName,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
                                                           style: TextStyle(
                                                             fontSize: 11,
                                                             fontWeight:
@@ -277,6 +292,9 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                                   const SizedBox(height: 2),
                                                   Text(
                                                     account.email,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: TextStyle(
                                                       fontSize: 13,
                                                       color: isDark
@@ -289,49 +307,87 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                                 ],
                                               ),
                                             ),
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.edit_outlined,
-                                                size: 20,
-                                                color: isDark
-                                                    ? Colors.grey.shade400
-                                                    : Colors.grey.shade700,
-                                              ),
-                                              onPressed: () =>
-                                                  _openEditDialog(account),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.delete_outline,
-                                                color: Colors.red,
-                                                size: 20,
-                                              ),
-                                              onPressed: () =>
-                                                  _deleteAccount(account),
+                                            PopupMenuButton<String>(
+                                              tooltip: 'Account actions',
+                                              onSelected: (action) {
+                                                if (action == 'edit') {
+                                                  _openEditDialog(account);
+                                                } else {
+                                                  _deleteAccount(account);
+                                                }
+                                              },
+                                              itemBuilder: (_) => const [
+                                                PopupMenuItem(
+                                                  value: 'edit',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.edit_outlined),
+                                                      SizedBox(width: 12),
+                                                      Text('Edit account'),
+                                                    ],
+                                                  ),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.delete_outline,
+                                                        color: Colors.red,
+                                                      ),
+                                                      SizedBox(width: 12),
+                                                      Text('Delete account'),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
                                         const SizedBox(height: 14),
-                                        Row(
-                                          children: [
-                                            _infoBadge(
-                                              Icons.workspace_premium,
-                                              'Plan: ${account.plan}',
-                                              isDark,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            _infoBadge(
-                                              Icons.alarm,
-                                              _formatResetBadge(account),
-                                              isDark,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            _infoBadge(
-                                              Icons.circle,
-                                              account.currentResetStatus,
-                                              isDark,
-                                            ),
-                                          ],
+                                        LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            final columns =
+                                                constraints.maxWidth >= 680
+                                                ? 3
+                                                : constraints.maxWidth >= 380
+                                                ? 2
+                                                : 1;
+                                            final gap = 8.0;
+                                            final width =
+                                                (constraints.maxWidth -
+                                                    gap * (columns - 1)) /
+                                                columns;
+                                            return Wrap(
+                                              spacing: gap,
+                                              runSpacing: gap,
+                                              children: [
+                                                SizedBox(
+                                                  width: width,
+                                                  child: _infoBadge(
+                                                    Icons.workspace_premium,
+                                                    'Plan: ${account.plan}',
+                                                    isDark,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  width: width,
+                                                  child: _infoBadge(
+                                                    Icons.alarm,
+                                                    _formatResetBadge(account),
+                                                    isDark,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  width: width,
+                                                  child: _resetStatusBadge(
+                                                    account.currentResetStatus,
+                                                    isDark,
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
                                         ),
                                         const SizedBox(height: 14),
                                         if (account.password.trim().isNotEmpty)
@@ -342,49 +398,24 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                         if (account.password.trim().isEmpty)
                                           const Text('No password saved'),
                                         const SizedBox(height: 8),
-                                        PopupMenuButton<String>(
-                                          onSelected: (value) =>
-                                              _setResetState(account, value),
-                                          itemBuilder: (_) => const [
-                                            PopupMenuItem(
-                                              value: 'active',
-                                              child: Text('Mark Active'),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'cooldown',
-                                              child: Text(
-                                                'Start 7-day cooldown',
-                                              ),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'none',
-                                              child: Text('Clear reset status'),
-                                            ),
-                                          ],
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.edit_note, size: 18),
-                                              SizedBox(width: 6),
-                                              Text('Update reset status'),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
                                         Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(
-                                              account.isFreePlan
-                                                  ? 'Free Plan • No renewal needed'
-                                                  : 'Renewal: ${Formatters.formatDate(account.renewalDate)}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: account.isFreePlan
-                                                    ? Colors.green.shade600
-                                                    : Colors.grey,
-                                                fontWeight: FontWeight.w500,
+                                            Expanded(
+                                              child: Text(
+                                                account.isFreePlan
+                                                    ? 'Free Plan • No renewal needed'
+                                                    : 'Renewal: ${Formatters.formatDate(account.renewalDate)}',
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: account.isFreePlan
+                                                      ? Colors.green.shade600
+                                                      : Colors.grey,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
                                             ),
                                             IconButton(
@@ -442,16 +473,57 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 14, color: Colors.grey.shade500),
           const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+          Expanded(
+            child: Text(
+              text,
+              softWrap: true,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _resetStatusBadge(String status, bool isDark) {
+    final isActive = status == 'Active';
+    final color = isActive
+        ? const Color(0xFF31A24C)
+        : (isDark ? Colors.amber.shade200 : Colors.amber.shade900);
+    final background = isActive
+        ? const Color(0xFF31A24C).withValues(alpha: isDark ? 0.2 : 0.12)
+        : Colors.amber.withValues(alpha: isDark ? 0.16 : 0.12);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isActive ? Icons.check_circle : Icons.schedule,
+            size: 15,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              status,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ),
         ],
@@ -475,17 +547,6 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
 
   String _providerLabel(String provider) =>
       provider == 'GitHub Copilot' ? 'Copilot' : provider;
-
-  Future<void> _setResetState(AIAccount account, String state) async {
-    final updated = account.copyWith(
-      resetState: state,
-      resetCooldownUntil: state == 'cooldown'
-          ? DateTime.now().add(const Duration(days: 7))
-          : null,
-    );
-    await _hive.saveAIAccount(updated);
-    await _loadAccounts();
-  }
 
   IconData _serviceIcon(String service) {
     switch (service) {
