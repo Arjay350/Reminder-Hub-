@@ -556,8 +556,48 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     _startTicker();
   }
 
-  void _reset() {
+  Future<bool> _confirmSessionAction({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            icon: Icon(
+              Icons.warning_amber_rounded,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(confirmLabel),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _reset() async {
     if (_state == null) return;
+    final confirmed = await _confirmSessionAction(
+      title: 'Reset this session?',
+      message:
+          'The current timer will return to the beginning of this study session.',
+      confirmLabel: 'Reset Session',
+    );
+    if (!confirmed || !mounted || _state == null) return;
     final updated = _studyService.resetTimer(_state!);
     _stopTicker();
     setState(() => _state = updated);
@@ -642,6 +682,13 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
 
   Future<void> _endSession() async {
     if (_state == null) return;
+    final confirmed = await _confirmSessionAction(
+      title: 'End this session?',
+      message:
+          'The study session will end and be saved to your study history.',
+      confirmLabel: 'End Session',
+    );
+    if (!confirmed || !mounted || _state == null) return;
     _stopTicker();
     final record = StudySessionRecord(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -1022,54 +1069,131 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     }
 
     if (!_timerStarted) {
+      final theme = Theme.of(context);
+      final phaseSeconds = switch (state.phase) {
+        StudyPhase.study => state.method.studyDurationMinutes * 60,
+        StudyPhase.shortBreak => state.method.shortBreakDurationMinutes * 60,
+        StudyPhase.longBreak => state.method.longBreakDurationMinutes * 60,
+        StudyPhase.completed => 1,
+      };
+      final phaseProgress = (1 - state.remainingSeconds / phaseSeconds).clamp(
+        0.0,
+        1.0,
+      );
+      final phaseColor = studyPhaseColor(state.phase);
+      final sessionProgress =
+          (state.currentSession / state.totalSessions).clamp(0.0, 1.0);
+      final stateMessage = state.statusMessage.toLowerCase();
+      final isReady = !state.isRunning &&
+          !state.completed &&
+          (stateMessage.contains('ready') || stateMessage.contains('reset'));
       return Scaffold(
         appBar: AppBar(title: const Text('Study Session')),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Ready to focus?',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight < 32
+                        ? 0
+                        : constraints.maxHeight - 32,
+                    maxWidth: 620,
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                    _sessionInfoCard(theme, state),
+                    const SizedBox(height: 18),
+                    _sessionTimerDial(
+                      context,
+                      state: state,
+                      phaseProgress: phaseProgress,
+                      phaseColor: phaseColor,
+                      size: 208,
+                    ),
+                    const SizedBox(height: 16),
+                    _sessionProgressBar(
+                      context,
+                      state: state,
+                      progress: sessionProgress,
+                    ),
+                    const SizedBox(height: 18),
+                    _TimerControlButton(
+                      isRunning: state.isRunning,
+                      label: state.isRunning
+                          ? 'Pause Timer'
+                          : isReady
+                          ? 'Start Timer'
+                          : 'Resume Timer',
+                      onPressed: _resume,
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _reset,
+                            icon: const Icon(Icons.replay_rounded, size: 18),
+                            label: const Text(
+                              'Reset Session',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor:
+                                  theme.colorScheme.onSurfaceVariant,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 12,
+                              ),
+                              side: BorderSide(
+                                color: theme.colorScheme.outlineVariant,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextButton.icon(
+                            onPressed: _endSession,
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            label: const Text(
+                              'End Session',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.error,
+                              backgroundColor: theme.colorScheme.error
+                                  .withValues(alpha: .08),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Text('Subject: ${state.subject}'),
-                Text('Mode: ${_methodLabel(state.method)}'),
-                const SizedBox(height: 8),
-                Text(
-                  '${state.method.studyDurationMinutes} min focus • '
-                  '${state.method.shortBreakDurationMinutes} min break • '
-                  '${state.totalSessions} focus sessions',
-                ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: _resume,
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: const Text('Start / Resume Timer'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: _reset,
-                  child: const Text('Reset Session'),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _endSession,
-                  child: const Text('End Session'),
-                ),
-              ],
+              ),
             ),
           ),
+        ),
         ),
       );
     }
 
     final method = state.method;
-    final phaseName = buildStudyPhaseText(state.phase);
     final phaseSeconds = switch (state.phase) {
       StudyPhase.study => method.studyDurationMinutes * 60,
       StudyPhase.shortBreak => method.shortBreakDurationMinutes * 60,
@@ -1087,198 +1211,94 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     final phaseColor = studyPhaseColor(state.phase);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Study Timer')),
+      appBar: AppBar(title: const Text('Study Session')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                state.subject,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+              _sessionInfoCard(Theme.of(context), state),
+              const SizedBox(height: 16),
+              _sessionTimerDial(
+                context,
+                state: state,
+                phaseProgress: phaseProgress,
+                phaseColor: phaseColor,
+                size: 218,
               ),
-              const SizedBox(height: 6),
-              Text(
-                _methodLabel(method),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              const SizedBox(height: 16),
+              _sessionProgressBar(
+                context,
+                state: state,
+                progress: sessionProgress,
               ),
-              const SizedBox(height: 28),
-              Center(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: phaseColor.withValues(
-                      alpha: state.isRunning ? .10 : .05,
-                    ),
-                    boxShadow: state.isRunning
-                        ? [
-                            BoxShadow(
-                              color: phaseColor.withValues(alpha: .18),
-                              blurRadius: 28,
-                              spreadRadius: 4,
-                            ),
-                          ]
-                        : const [],
-                  ),
-                  child: SizedBox(
-                    width: 252,
-                    height: 252,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(end: phaseProgress),
-                      duration: const Duration(milliseconds: 900),
-                      curve: Curves.easeInOutCubic,
-                      builder: (context, progress, _) => Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox.expand(
-                            child: CircularProgressIndicator(
-                              value: progress,
-                              strokeWidth: 11,
-                              strokeCap: StrokeCap.round,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              valueColor: AlwaysStoppedAnimation(phaseColor),
-                            ),
-                          ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 180),
-                                transitionBuilder: (child, animation) =>
-                                    FadeTransition(
-                                      opacity: animation,
-                                      child: SlideTransition(
-                                        position: Tween<Offset>(
-                                          begin: const Offset(0, .12),
-                                          end: Offset.zero,
-                                        ).animate(animation),
-                                        child: child,
-                                      ),
-                                    ),
-                                child: Text(
-                                  formatStudyClock(state.remainingDuration),
-                                  key: ValueKey(state.remainingSeconds),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .displaySmall
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        fontFeatures: const [
-                                          FontFeature.tabularFigures(),
-                                        ],
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 280),
-                                child: Text(
-                                  phaseName,
-                                  key: ValueKey(state.phase),
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(
-                                        color: phaseColor,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                state.phase == StudyPhase.completed
-                                    ? 'SESSION COMPLETE'
-                                    : state.isRunning
-                                    ? (state.isStudyPhase
-                                          ? 'STAY FOCUSED'
-                                          : 'TAKE A BREAK')
-                                    : 'SESSION PAUSED',
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(letterSpacing: 1.2),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Text(
-                'Focus sessions',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              const SizedBox(height: 20),
+              _TimerControlButton(
+                isRunning: state.isRunning,
+                onPressed: state.isRunning ? _pause : _resume,
               ),
               const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(end: sessionProgress),
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, _) =>
-                      LinearProgressIndicator(value: value, minHeight: 8),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Session ${state.currentSession} of ${state.totalSessions}',
-                textAlign: TextAlign.end,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
-                    flex: 2,
-                    child: _TimerControlButton(
-                      isRunning: state.isRunning,
-                      onPressed: state.isRunning ? _pause : _resume,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _reset,
-                      icon: const Icon(Icons.replay_rounded),
-                      label: const Text('Reset'),
+                      icon: const Icon(Icons.replay_rounded, size: 18),
+                      label: const Text(
+                        'Reset Session',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: _endSession,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      label: const Text(
+                        'End Session',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.error.withValues(alpha: .08),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12,
-                children: [
-                  TextButton.icon(
-                    onPressed: state.completed ? null : _skipPhase,
-                    icon: const Icon(Icons.skip_next_rounded),
-                    label: const Text('Skip phase'),
-                  ),
-                  TextButton.icon(
-                    onPressed: _endSession,
-                    icon: const Icon(Icons.stop_circle_outlined),
-                    label: const Text('End session'),
-                  ),
-                ],
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.center,
+                child: TextButton.icon(
+                  onPressed: state.completed ? null : _skipPhase,
+                  icon: const Icon(Icons.skip_next_rounded),
+                  label: const Text('Skip phase'),
+                ),
               ),
               if (state.phase == StudyPhase.longBreak)
                 TextButton.icon(
@@ -1286,10 +1306,275 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
                   icon: const Icon(Icons.tune_rounded),
                   label: const Text('Change Study Mode'),
                 ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _sessionInfoCard(ThemeData theme, StudyTimerState state) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(23),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: .65),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .04),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.school_rounded,
+                  color: Color(0xFF6366F1),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  state.isRunning
+                      ? 'STUDY SESSION'
+                      : state.statusMessage.toLowerCase().contains('paused')
+                      ? 'SESSION PAUSED'
+                      : 'READY TO FOCUS',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: const Color(0xFF6366F1),
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                '${state.currentSession}/${state.totalSessions}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            state.subject,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Icon(
+                Icons.timer_outlined,
+                size: 16,
+                color: Color(0xFF14B8A6),
+              ),
+              Text(
+                _methodLabel(state.method),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: const Color(0xFF14B8A6),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${state.method.studyDurationMinutes} min focus  •  '
+            '${state.method.shortBreakDurationMinutes} min break  •  '
+            '${state.totalSessions} focus sessions',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sessionTimerDial(
+    BuildContext context, {
+    required StudyTimerState state,
+    required double phaseProgress,
+    required Color phaseColor,
+    required double size,
+  }) {
+    final theme = Theme.of(context);
+    final stateMessage = state.statusMessage.toLowerCase();
+    final status = state.completed
+        ? 'COMPLETE'
+        : state.isRunning
+        ? (state.isStudyPhase ? 'FOCUS' : 'BREAK')
+        : (stateMessage.contains('ready') ||
+              stateMessage.contains('reset'))
+        ? 'READY'
+        : 'PAUSED';
+
+    return Center(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: phaseColor.withValues(alpha: state.isRunning ? .1 : .05),
+          boxShadow: state.isRunning
+              ? [
+                  BoxShadow(
+                    color: phaseColor.withValues(alpha: .16),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : const [],
+        ),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: phaseProgress),
+            duration: const Duration(milliseconds: 850),
+            curve: Curves.easeInOutCubic,
+            builder: (context, progress, _) => Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 9,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation(phaseColor),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.timer_outlined, size: 18, color: phaseColor),
+                    const SizedBox(height: 4),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: Text(
+                        status,
+                        key: ValueKey(status),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: phaseColor,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, .1),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child: Text(
+                        formatStudyClock(state.remainingDuration),
+                        key: ValueKey(state.remainingSeconds),
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      state.phase == StudyPhase.completed
+                          ? 'Session complete'
+                          : state.isStudyPhase
+                          ? 'Study session'
+                          : 'Break time',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sessionProgressBar(
+    BuildContext context, {
+    required StudyTimerState state,
+    required double progress,
+  }) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Focus sessions',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              'Session ${state.currentSession} of ${state.totalSessions}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: progress),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) => LinearProgressIndicator(
+              value: value,
+              minHeight: 7,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1401,10 +1686,12 @@ class _TimerControlButton extends StatefulWidget {
   const _TimerControlButton({
     required this.isRunning,
     required this.onPressed,
+    this.label,
   });
 
   final bool isRunning;
   final VoidCallback onPressed;
+  final String? label;
 
   @override
   State<_TimerControlButton> createState() => _TimerControlButtonState();
@@ -1419,7 +1706,8 @@ class _TimerControlButtonState extends State<_TimerControlButton> {
 
   @override
   Widget build(BuildContext context) {
-    final label = widget.isRunning ? 'Pause Timer' : 'Resume Timer';
+    final label =
+        widget.label ?? (widget.isRunning ? 'Pause Timer' : 'Resume Timer');
     final icon = widget.isRunning
         ? Icons.pause_rounded
         : Icons.play_arrow_rounded;
