@@ -69,7 +69,9 @@ class _AIAccountDialogState extends State<AIAccountDialog> {
         a?.authMethod ?? (a?.isGoogleAuth == true ? 'Google' : 'Password');
     _emailController = TextEditingController(text: a?.email ?? '');
     _username = a?.username ?? '';
-    _password = a?.password ?? '';
+    // Never preload a persisted password into an editable or visible field.
+    // An empty edit value means keep the existing saved password unchanged.
+    _password = '';
     _plan = a?.plan ?? 'Plus';
     _resetDate = a?.resetDate ?? DateTime.now().add(const Duration(days: 30));
     _resetTime = a != null
@@ -407,7 +409,13 @@ class _AIAccountDialogState extends State<AIAccountDialog> {
                         initialValue: _password,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
-                          labelText: 'Password',
+                          labelText: widget.account?.password.isNotEmpty == true
+                              ? 'New Password (optional)'
+                              : 'Password',
+                          helperText:
+                              widget.account?.password.isNotEmpty == true
+                              ? 'Leave blank to keep the saved password'
+                              : null,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -426,9 +434,15 @@ class _AIAccountDialogState extends State<AIAccountDialog> {
                             ),
                           ),
                         ),
-                        validator: (val) => val == null || val.isEmpty
-                            ? 'Please enter password'
-                            : null,
+                        validator: (val) {
+                          final hasSavedPassword =
+                              widget.account?.password.isNotEmpty == true;
+                          if ((val == null || val.isEmpty) &&
+                              !hasSavedPassword) {
+                            return 'Please enter password';
+                          }
+                          return null;
+                        },
                         onSaved: (val) => _password = val ?? '',
                       ),
                     ),
@@ -662,7 +676,9 @@ class _AIAccountDialogState extends State<AIAccountDialog> {
       accountName: _accountName,
       email: _emailController.text.trim(),
       username: _username,
-      password: _password,
+      password: _password.isEmpty && widget.account != null
+          ? widget.account!.password
+          : _password,
       authMethod: _authMethod,
       plan: _plan,
       resetDate: _resetDate,

@@ -667,68 +667,354 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
   Widget build(BuildContext context) {
     final state = _state;
     if (state == null) {
+      final theme = Theme.of(context);
+      final method = _buildSelectedMethod();
+      final subject = _subjectController.text.trim();
+      final isCustom = method.id == 'custom';
+      final sessions = _readPositiveInt(_sessionsController, 4);
       return Scaffold(
-        appBar: AppBar(title: const Text('Study Timer')),
+        appBar: AppBar(
+          title: const Text('Study Timer'),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Icon(Icons.timer_outlined),
+            ),
+          ],
+        ),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _subjectController,
-                  decoration: const InputDecoration(
-                    labelText: 'Subject (optional)',
-                    hintText: 'Mathematics',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedMethod?.id,
-                  items: StudyService.defaultStudyMethods
-                      .map(
-                        (method) => DropdownMenuItem(
-                          value: method.id,
-                          child: Text(_methodLabel(method)),
+          child: LayoutBuilder(
+            builder: (context, _) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: theme.brightness == Brightness.dark
+                                ? const [
+                                    Color(0xFF25234D),
+                                    Color(0xFF17243A),
+                                  ]
+                                : const [
+                                    Color(0xFFEDEBFF),
+                                    Color(0xFFE8F8F6),
+                                  ],
+                          ),
+                          border: Border.all(
+                            color: const Color(0xFF6366F1).withValues(
+                              alpha: theme.brightness == Brightness.dark
+                                  ? .24
+                                  : .12,
+                            ),
+                          ),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (methodId) {
-                    if (methodId == null) return;
-                    setState(
-                      () => _selectedMethod = StudyService.defaultStudyMethods
-                          .firstWhere((method) => method.id == methodId),
-                    );
-                  },
-                  decoration: const InputDecoration(labelText: 'Study Method'),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6366F1).withValues(
+                                  alpha: theme.brightness == Brightness.dark
+                                      ? .22
+                                      : .12,
+                                ),
+                                borderRadius: BorderRadius.circular(17),
+                              ),
+                              child: const Icon(
+                                Icons.menu_book_rounded,
+                                color: Color(0xFF6366F1),
+                                size: 27,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'READY TO STUDY',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: const Color(0xFF6366F1),
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    subject.isEmpty
+                                        ? 'Plan a focused session'
+                                        : subject,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Choose a study method and start a focused session.',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _studySetupCard(
+                        theme,
+                        label: 'SUBJECT',
+                        icon: Icons.bookmark_outline_rounded,
+                        child: TextField(
+                          controller: _subjectController,
+                          textCapitalization: TextCapitalization.sentences,
+                          onChanged: (_) => setState(() {}),
+                          decoration: const InputDecoration(
+                            hintText: 'e.g. Mathematics',
+                            prefixIcon: Icon(Icons.subject_rounded),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _studySetupCard(
+                        theme,
+                        label: 'STUDY METHOD',
+                        icon: Icons.tune_rounded,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          child: Column(
+                            key: ValueKey(_selectedMethod?.id ?? 'loading'),
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              DropdownButtonFormField<String>(
+                                initialValue: _selectedMethod?.id,
+                                isExpanded: true,
+                                items: StudyService.defaultStudyMethods
+                                    .map(
+                                      (method) => DropdownMenuItem(
+                                        value: method.id,
+                                        child: Text(
+                                          _methodLabel(method),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (methodId) {
+                                  if (methodId == null) return;
+                                  setState(
+                                    () => _selectedMethod = StudyService
+                                        .defaultStudyMethods
+                                        .firstWhere(
+                                          (method) => method.id == methodId,
+                                        ),
+                                  );
+                                },
+                                decoration: const InputDecoration(
+                                  prefixIcon: Icon(Icons.timer_outlined),
+                                ),
+                              ),
+                              if (isCustom) ...[
+                                const SizedBox(height: 12),
+                                LayoutBuilder(
+                                  builder: (context, fieldConstraints) {
+                                    final compact =
+                                        fieldConstraints.maxWidth < 440;
+                                    final fields = [
+                                      _numberField(
+                                        controller: _focusMinutesController,
+                                        label: 'Focus (minutes)',
+                                        onChanged: () => setState(() {}),
+                                      ),
+                                      _numberField(
+                                        controller: _breakMinutesController,
+                                        label: 'Short break (minutes)',
+                                        onChanged: () => setState(() {}),
+                                      ),
+                                      _numberField(
+                                        controller: _sessionsController,
+                                        label: 'Focus sessions',
+                                        onChanged: () => setState(() {}),
+                                      ),
+                                      _numberField(
+                                        controller:
+                                            _longBreakMinutesController,
+                                        label: 'Long break (15–30 min)',
+                                        onChanged: () => setState(() {}),
+                                      ),
+                                    ];
+                                    if (compact) {
+                                      return Column(
+                                        children: [
+                                          for (var i = 0;
+                                              i < fields.length;
+                                              i++) ...[
+                                            if (i > 0)
+                                              const SizedBox(height: 10),
+                                            fields[i],
+                                          ],
+                                        ],
+                                      );
+                                    }
+                                    return Wrap(
+                                      spacing: 10,
+                                      runSpacing: 10,
+                                      children: fields
+                                          .map(
+                                            (field) => SizedBox(
+                                              width:
+                                                  (fieldConstraints.maxWidth -
+                                                      10) /
+                                                  2,
+                                              child: field,
+                                            ),
+                                          )
+                                          .toList(),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(
+                              alpha: .65,
+                            ),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .035),
+                              blurRadius: 18,
+                              offset: const Offset(0, 7),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.insights_rounded,
+                                  size: 18,
+                                  color: Color(0xFF14B8A6),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'SESSION PREVIEW',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    letterSpacing: 1,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            LayoutBuilder(
+                              builder: (context, previewConstraints) {
+                                final columns =
+                                    previewConstraints.maxWidth < 360 ? 2 : 4;
+                                final gap = 8.0;
+                                final width =
+                                    (previewConstraints.maxWidth -
+                                        gap * (columns - 1)) /
+                                    columns;
+                                final previews = [
+                                  _previewStat(
+                                    theme,
+                                    Icons.bolt_rounded,
+                                    '${method.studyDurationMinutes} min',
+                                    'FOCUS',
+                                    const Color(0xFF6366F1),
+                                  ),
+                                  _previewStat(
+                                    theme,
+                                    Icons.coffee_rounded,
+                                    '${method.shortBreakDurationMinutes} min',
+                                    'BREAK',
+                                    const Color(0xFF14B8A6),
+                                  ),
+                                  _previewStat(
+                                    theme,
+                                    Icons.repeat_rounded,
+                                    '$sessions cycles',
+                                    'SESSIONS',
+                                    const Color(0xFF8B5CF6),
+                                  ),
+                                  _previewStat(
+                                    theme,
+                                    Icons.self_improvement_rounded,
+                                    '${method.longBreakDurationMinutes} min',
+                                    'LONG BREAK',
+                                    const Color(0xFFF59E0B),
+                                  ),
+                                ];
+                                return Wrap(
+                                  spacing: gap,
+                                  runSpacing: gap,
+                                  children: previews
+                                      .map(
+                                        (preview) => SizedBox(
+                                          width: width,
+                                          child: preview,
+                                        ),
+                                      )
+                                      .toList(),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        height: 58,
+                        child: FilledButton.icon(
+                          onPressed: _startNewSession,
+                          icon: const Icon(Icons.play_arrow_rounded, size: 24),
+                          label: const Text(
+                            'Start Study Session',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF5B5BD6),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                if (_selectedMethod?.id == 'custom') ...[
-                  const SizedBox(height: 12),
-                  _numberField(
-                    controller: _focusMinutesController,
-                    label: 'Focus duration (minutes)',
-                  ),
-                  const SizedBox(height: 12),
-                  _numberField(
-                    controller: _breakMinutesController,
-                    label: 'Short break duration (minutes)',
-                  ),
-                  const SizedBox(height: 12),
-                  _numberField(
-                    controller: _sessionsController,
-                    label: 'Number of focus sessions',
-                  ),
-                  const SizedBox(height: 12),
-                  _numberField(
-                    controller: _longBreakMinutesController,
-                    label: 'Long break duration (15-30 minutes)',
-                  ),
-                ],
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _startNewSession,
-                  child: const Text('Start Study Session'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1015,13 +1301,105 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     );
   }
 
+  Widget _studySetupCard(
+    ThemeData theme, {
+    required String label,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: .65),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .035),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 17, color: const Color(0xFF6366F1)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _previewStat(
+    ThemeData theme,
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(
+          alpha: theme.brightness == Brightness.dark ? .14 : .08,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: color),
+          const SizedBox(height: 7),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 9,
+              letterSpacing: .5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _numberField({
     required TextEditingController controller,
     required String label,
+    VoidCallback? onChanged,
   }) {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
+      onChanged: (_) => onChanged?.call(),
       decoration: InputDecoration(labelText: label),
     );
   }

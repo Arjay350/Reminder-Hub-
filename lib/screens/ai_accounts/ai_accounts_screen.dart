@@ -19,10 +19,12 @@ class AIAccountsScreen extends StatefulWidget {
     super.key,
     this.initialService,
     this.activeOnly = false,
+    this.isScreenActive = true,
   });
 
   final String? initialService;
   final bool activeOnly;
+  final bool isScreenActive;
 
   @override
   State<AIAccountsScreen> createState() => _AIAccountsScreenState();
@@ -394,6 +396,10 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                           PasswordTextField(
                                             password: account.password,
                                             label: 'Password Credential',
+                                            authenticateOnReveal: true,
+                                            authenticateOnCopy: true,
+                                            hideOnBackground: true,
+                                            isScreenActive: widget.isScreenActive,
                                           ),
                                         if (account.password.trim().isEmpty)
                                           const Text('No password saved'),
