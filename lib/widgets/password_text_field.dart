@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/biometric_service.dart';
 import '../services/password_route_observer.dart';
+import 'secure_action_gate.dart';
 
 class PasswordTextField extends StatefulWidget {
   const PasswordTextField({
@@ -202,8 +202,10 @@ class _PasswordTextFieldState extends State<PasswordTextField>
     setState(() => _authenticating = true);
 
     try {
-      return await BiometricService.instance.authenticate(
-        reason: reason,
+      return await showSecureActionGate(
+        context,
+        title: 'Verify to continue',
+        message: reason,
       );
     } catch (_) {
       return false;

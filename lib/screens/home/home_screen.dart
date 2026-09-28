@@ -9,6 +9,7 @@ import '../../services/hive_service.dart';
 import '../../services/gas_calculation_service.dart';
 import '../../services/timetable_calculation_service.dart';
 import '../../services/study_service.dart';
+import '../../widgets/secure_action_gate.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/reminder_dialog.dart';
 import '../../widgets/bill_dialog.dart';
@@ -1489,13 +1490,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           subtitle: '${_userAccounts.length} saved logins',
                           icon: Icons.lock_outline,
                           color: const Color(0xFFF59E0B),
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            final authenticated = await showSecureActionGate(
+                              context,
+                              title: 'Unlock Account Manager',
+                              message: 'Enter your PIN or use fingerprint to continue.',
+                            );
+                            if (!authenticated || !context.mounted) return;
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const AccountManagerScreen(),
                               ),
-                            ).then((_) => _refreshData());
+                            );
+                            _refreshData();
                           },
                         ),
                       ),
