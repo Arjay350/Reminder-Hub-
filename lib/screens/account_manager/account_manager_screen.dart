@@ -337,6 +337,8 @@ class _AccountManagerScreenState extends State<AccountManagerScreen> {
                                           PasswordTextField(
                                             password: account.password,
                                             label: 'Password credential',
+                                            authenticateOnReveal: true,
+                                            authenticateOnCopy: true,
                                           )
                                         else
                                           const Text('No password saved'),
@@ -526,7 +528,12 @@ class _AccountManagerScreenState extends State<AccountManagerScreen> {
               _detailRow('Email', account.email, isDark),
             const SizedBox(height: 8),
             if (account.password.trim().isNotEmpty)
-              PasswordTextField(password: account.password, label: 'Password')
+              PasswordTextField(
+                password: account.password,
+                label: 'Password',
+                authenticateOnReveal: true,
+                authenticateOnCopy: true,
+              )
             else
               const Text('No password saved'),
             if (account.website.isNotEmpty) ...[

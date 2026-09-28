@@ -151,8 +151,10 @@ class _MainNavigationShellState extends State<MainNavigationShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // local_auth briefly moves the app to inactive while its system prompt is
+    // displayed. Locking here replaces the current page with the main PIN
+    // screen and interrupts password reveal. Backgrounding still locks it.
     if ((state == AppLifecycleState.paused ||
-            state == AppLifecycleState.inactive ||
             state == AppLifecycleState.hidden) &&
         HiveService.instance.getSettings().appLock &&
         mounted) {
