@@ -5,6 +5,7 @@ import '../../models/app_models.dart';
 import '../../services/hive_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/widget_service.dart';
+import '../../services/pet_service.dart';
 import '../../widgets/bill_dialog.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/custom_card.dart';
@@ -35,6 +36,7 @@ class _BillsScreenState extends State<BillsScreen> {
     setState(() {
       _bills = _hive.getBills();
     });
+    PetService.instance.onBillsChecked();
   }
 
   @override
@@ -581,6 +583,7 @@ class _BillsScreenState extends State<BillsScreen> {
     if (!bill.isRecurring) {
       final updated = bill.copyWith(paid: true);
       await _hive.saveBill(updated);
+      PetService.instance.onBillPaid(updated);
       await NotificationService.instance.cancelNotificationForId(bill.id);
       try {
         await WidgetService.instance.updateBillsWidget();
@@ -618,6 +621,7 @@ class _BillsScreenState extends State<BillsScreen> {
 
     // Step 4: Persist updated bill to Hive
     await _hive.saveBill(updated);
+    PetService.instance.onBillPaid(updated);
 
     // Step 5: Cancel old notification and schedule notification for new occurrence
     await NotificationService.instance.cancelNotificationForId(bill.id);

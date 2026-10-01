@@ -23,6 +23,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<SchoolClass> _schoolClasses = [];
   List<Bill> _bills = [];
   List<AIAccount> _aiAccounts = [];
+  List<Birthday> _birthdays = [];
+  bool _hideSchoolSchedule = false;
 
   @override
   void initState() {
@@ -33,12 +35,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _loadEvents() async {
     await _hive.ensureInitialized();
     if (!mounted) return;
+    final settings = _hive.getSettings();
     setState(() {
+      _hideSchoolSchedule = settings.hideSchoolScheduleInCalendar;
       _reminders = _hive.getReminders();
       _schoolClasses = _hive.getSchoolClasses();
       _bills = _hive.getBills();
       _aiAccounts = _hive.getAIAccounts();
+      _birthdays = _hive.getBirthdays();
     });
+  }
+
+  Future<void> _toggleHideSchoolSchedule() async {
+    final newValue = !_hideSchoolSchedule;
+    setState(() {
+      _hideSchoolSchedule = newValue;
+    });
+    final settings = _hive.getSettings();
+    await _hive.saveSettings(
+      settings.copyWith(hideSchoolScheduleInCalendar: newValue),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          newValue
+              ? 'School schedule hidden from calendar (School reminders like assignments & projects remain visible)'
+              : 'School schedule shown in calendar',
+        ),
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: _toggleHideSchoolSchedule,
+        ),
+      ),
+    );
   }
 
   @override
@@ -54,6 +86,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _hideSchoolSchedule
+                      ? Icons.school_outlined
+                      : Icons.school_rounded,
+                  color: _hideSchoolSchedule
+                      ? Colors.grey
+                      : const Color(0xFF14B8A6),
+                ),
+                if (_hideSchoolSchedule)
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(1.5),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 9,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: _hideSchoolSchedule
+                ? 'Show School Schedule (Classes Hidden)'
+                : 'Hide School Schedule',
+            onPressed: _toggleHideSchoolSchedule,
+          ),
           IconButton(
             icon: const Icon(Icons.today_outlined),
             tooltip: 'Go to Today',
@@ -151,13 +219,73 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  Formatters.isSameDay(_selectedDate, DateTime.now())
-                      ? 'Today\'s Events'
-                      : DateFormat('EEEE, MMM d').format(_selectedDate),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.3,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          Formatters.isSameDay(_selectedDate, DateTime.now())
+                              ? 'Today\'s Events'
+                              : DateFormat('EEEE, MMM d').format(_selectedDate),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (_hideSchoolSchedule) ...[
+                        const SizedBox(width: 8),
+                        Tooltip(
+                          message: 'School schedule is hidden. Tap to show.',
+                          child: InkWell(
+                            onTap: _toggleHideSchoolSchedule,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.amber.shade900.withValues(
+                                        alpha: 0.3,
+                                      )
+                                    : Colors.amber.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.amber.withValues(alpha: 0.5),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.school_outlined,
+                                    size: 13,
+                                    color: isDark
+                                        ? Colors.amber.shade300
+                                        : Colors.amber.shade800,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Classes Hidden',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? Colors.amber.shade300
+                                          : Colors.amber.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 Container(
@@ -405,19 +533,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     }
 
-    // School Classes (Recurring on day-of-week)
-    for (final c in _schoolClasses) {
-      if (c.occursOnDay(date.weekday)) {
-        items.add(
-          _CalendarEventItem(
-            title: c.subject,
-            subtitle:
-                '${c.timeRange}${c.room.isNotEmpty ? " • Room: ${c.room}" : ""}${c.teacher.isNotEmpty ? " • ${c.teacher}" : ""}',
-            typeLabel: 'School',
-            icon: Icons.school_rounded,
-            color: c.color,
-          ),
-        );
+    // School Classes (Recurring on day-of-week) - only when not hidden
+    if (!_hideSchoolSchedule) {
+      for (final c in _schoolClasses) {
+        if (c.occursOnDay(date.weekday)) {
+          items.add(
+            _CalendarEventItem(
+              title: c.subject,
+              subtitle:
+                  '${c.timeRange}${c.room.isNotEmpty ? " • Room: ${c.room}" : ""}${c.teacher.isNotEmpty ? " • ${c.teacher}" : ""}',
+              typeLabel: 'School',
+              icon: Icons.school_rounded,
+              color: c.color,
+            ),
+          );
+        }
       }
     }
 
@@ -457,12 +587,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
     for (final a in _aiAccounts) {
       final sched = a.resetSchedule.trim().toLowerCase();
       final matchesDate = sched == 'daily'
-          ? !DateTime(date.year, date.month, date.day).isBefore(DateTime(a.resetDate.year, a.resetDate.month, a.resetDate.day))
+          ? !DateTime(date.year, date.month, date.day).isBefore(
+              DateTime(a.resetDate.year, a.resetDate.month, a.resetDate.day),
+            )
           : sched == 'weekly'
-              ? !DateTime(date.year, date.month, date.day).isBefore(DateTime(a.resetDate.year, a.resetDate.month, a.resetDate.day)) && date.weekday == a.resetDate.weekday
-              : sched == 'monthly'
-                  ? !DateTime(date.year, date.month, date.day).isBefore(DateTime(a.resetDate.year, a.resetDate.month, a.resetDate.day)) && date.day == a.resetDate.day
-                  : Formatters.isSameDay(a.resetDate, date);
+          ? !DateTime(date.year, date.month, date.day).isBefore(
+                  DateTime(
+                    a.resetDate.year,
+                    a.resetDate.month,
+                    a.resetDate.day,
+                  ),
+                ) &&
+                date.weekday == a.resetDate.weekday
+          : sched == 'monthly'
+          ? !DateTime(date.year, date.month, date.day).isBefore(
+                  DateTime(
+                    a.resetDate.year,
+                    a.resetDate.month,
+                    a.resetDate.day,
+                  ),
+                ) &&
+                date.day == a.resetDate.day
+          : Formatters.isSameDay(a.resetDate, date);
       if (matchesDate) {
         items.add(
           _CalendarEventItem(
@@ -485,6 +631,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
             typeLabel: 'AI Renewal',
             icon: Icons.event_repeat,
             color: const Color(0xFFEC4899),
+          ),
+        );
+      }
+    }
+
+    // Birthdays
+    for (final birthday in _birthdays) {
+      final birthdayDate = birthday.nextBirthdayDateFor(date);
+      if (Formatters.isSameDay(birthdayDate, date)) {
+        final ageText = birthday.turningAgeFor(date) == null
+            ? ''
+            : ' • Turns ${birthday.turningAgeFor(date)}';
+        final isUser = birthday.isUserBirthday;
+        items.add(
+          _CalendarEventItem(
+            title: isUser ? '🎂 Your Birthday' : birthday.name,
+            subtitle: isUser
+                ? 'Celebration day${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}'
+                : '${birthday.relationship}$ageText${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}',
+            typeLabel: isUser ? 'Your Birthday' : 'Birthday',
+            icon: Icons.cake_rounded,
+            color: isUser ? const Color(0xFFEC4899) : const Color(0xFFF472B6),
           ),
         );
       }

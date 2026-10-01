@@ -1,4 +1,190 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+class Birthday {
+  Birthday({
+    required this.id,
+    required this.name,
+    required this.birthDate,
+    this.relationship = 'Family',
+    this.giftIdeas = '',
+    this.remind7DaysBefore = true,
+    this.remind1DayBefore = true,
+    this.remindOnDay = true,
+    this.reminderTime = '09:00 AM',
+    this.customNotes = '',
+    this.yearKnown = true,
+    this.isUserBirthday = false,
+  });
+
+  final String id;
+  final String name;
+  final DateTime birthDate;
+  final String relationship;
+  final String giftIdeas;
+  final bool remind7DaysBefore;
+  final bool remind1DayBefore;
+  final bool remindOnDay;
+  final String reminderTime;
+  final String customNotes;
+  final bool yearKnown;
+  final bool isUserBirthday;
+
+  static const List<String> relationshipOptions = [
+    'Family',
+    'Friend',
+    'School',
+    'Work',
+    'Partner',
+    'Other',
+  ];
+
+  int? get turningAge => turningAgeFor(DateTime.now());
+  int get daysUntilNext => daysUntilNextFor(DateTime.now());
+  DateTime get nextBirthdayDate => nextBirthdayDateFor(DateTime.now());
+  String get formattedDate => formattedDateFor(DateTime.now());
+
+  int? turningAgeFor(DateTime reference) {
+    if (!yearKnown || birthDate.year <= 0) return null;
+    return nextBirthdayDateFor(reference).year - birthDate.year;
+  }
+
+  int daysUntilNextFor(DateTime reference) {
+    final today = DateTime(reference.year, reference.month, reference.day);
+    return nextBirthdayDateFor(reference).difference(today).inDays;
+  }
+
+  DateTime nextBirthdayDateFor(DateTime reference) {
+    final month = birthDate.month;
+    final day = birthDate.day;
+    final nextYear = reference.year;
+    final candidate = _safeBirthdayDate(nextYear, month, day);
+    if (!candidate.isBefore(
+      DateTime(reference.year, reference.month, reference.day),
+    )) {
+      return candidate;
+    }
+    return _safeBirthdayDate(nextYear + 1, month, day);
+  }
+
+  String formattedDateFor(DateTime reference) {
+    final dt = DateFormat('MMMM d').format(birthDate);
+    final age = turningAgeFor(reference);
+    if (age == null || age <= 0) return dt;
+    return '$dt (Turns $age)';
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'birthDate': birthDate.toIso8601String(),
+    'relationship': relationship,
+    'giftIdeas': giftIdeas,
+    'remind7DaysBefore': remind7DaysBefore,
+    'remind1DayBefore': remind1DayBefore,
+    'remindOnDay': remindOnDay,
+    'reminderTime': reminderTime,
+    'customNotes': customNotes,
+    'yearKnown': yearKnown,
+    'isUserBirthday': isUserBirthday,
+  };
+
+  factory Birthday.fromJson(Map<String, dynamic> json) {
+    final birthDateRaw = json['birthDate'];
+    DateTime parsedBirthDate;
+    if (birthDateRaw is String && birthDateRaw.trim().isNotEmpty) {
+      try {
+        parsedBirthDate = DateTime.parse(birthDateRaw);
+      } catch (_) {
+        parsedBirthDate = DateTime(DateTime.now().year, 1, 1);
+      }
+    } else {
+      parsedBirthDate = DateTime(DateTime.now().year, 1, 1);
+    }
+
+    final yearKnown = json['yearKnown'] is bool
+        ? json['yearKnown'] as bool
+        : true;
+    final isUserBirthday = json['isUserBirthday'] is bool
+        ? json['isUserBirthday'] as bool
+        : false;
+
+    return Birthday(
+      id:
+          (json['id'] as String?) ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
+      name: (json['name'] as String?) ?? '',
+      birthDate: _coerceBirthDate(parsedBirthDate, yearKnown),
+      relationship: (json['relationship'] as String?) ?? 'Family',
+      giftIdeas: (json['giftIdeas'] as String?) ?? '',
+      remind7DaysBefore: json['remind7DaysBefore'] is bool
+          ? json['remind7DaysBefore'] as bool
+          : true,
+      remind1DayBefore: json['remind1DayBefore'] is bool
+          ? json['remind1DayBefore'] as bool
+          : true,
+      remindOnDay: json['remindOnDay'] is bool
+          ? json['remindOnDay'] as bool
+          : true,
+      reminderTime: (json['reminderTime'] as String?) ?? '09:00 AM',
+      customNotes: (json['customNotes'] as String?) ?? '',
+      yearKnown: yearKnown,
+      isUserBirthday: isUserBirthday,
+    );
+  }
+
+  Birthday copyWith({
+    String? id,
+    String? name,
+    DateTime? birthDate,
+    String? relationship,
+    String? giftIdeas,
+    bool? remind7DaysBefore,
+    bool? remind1DayBefore,
+    bool? remindOnDay,
+    String? reminderTime,
+    String? customNotes,
+    bool? yearKnown,
+    bool? isUserBirthday,
+  }) {
+    return Birthday(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      birthDate: birthDate ?? this.birthDate,
+      relationship: relationship ?? this.relationship,
+      giftIdeas: giftIdeas ?? this.giftIdeas,
+      remind7DaysBefore: remind7DaysBefore ?? this.remind7DaysBefore,
+      remind1DayBefore: remind1DayBefore ?? this.remind1DayBefore,
+      remindOnDay: remindOnDay ?? this.remindOnDay,
+      reminderTime: reminderTime ?? this.reminderTime,
+      customNotes: customNotes ?? this.customNotes,
+      yearKnown: yearKnown ?? this.yearKnown,
+      isUserBirthday: isUserBirthday ?? this.isUserBirthday,
+    );
+  }
+
+  static Birthday? findUserBirthday(List<Birthday> birthdays) {
+    for (final birthday in birthdays) {
+      if (birthday.isUserBirthday) return birthday;
+    }
+    return null;
+  }
+
+  static DateTime _coerceBirthDate(DateTime parsed, bool yearKnown) {
+    if (!yearKnown) {
+      return DateTime(2000, parsed.month, parsed.day);
+    }
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  static DateTime _safeBirthdayDate(int year, int month, int day) {
+    final safeYear = year < 1 ? 2000 : year;
+    final monthValue = month.clamp(1, 12);
+    final maxDay = DateTime(safeYear, monthValue + 1, 0).day;
+    final safeDay = day.clamp(1, maxDay);
+    return DateTime(safeYear, monthValue, safeDay);
+  }
+}
 
 class Reminder {
   Reminder({
@@ -324,9 +510,8 @@ class AIAccount {
 
   /// Availability follows the device's local clock; no saved/manual state
   /// can override the scheduled reset.
-  String get currentResetStatus => _resetAt.isAfter(DateTime.now())
-      ? 'Cooldown'
-      : 'Active';
+  String get currentResetStatus =>
+      _resetAt.isAfter(DateTime.now()) ? 'Cooldown' : 'Active';
 
   DateTime get _resetAt {
     final time = _parsedResetTime;
@@ -1244,6 +1429,7 @@ class AppSettings {
     this.gasNotificationDays = 3,
     this.lastSeenWhatsNewVersion = '',
     this.backupFolderPath = '',
+    this.hideSchoolScheduleInCalendar = false,
   });
 
   final String themeMode;
@@ -1257,6 +1443,7 @@ class AppSettings {
   final int gasNotificationDays;
   final String lastSeenWhatsNewVersion;
   final String backupFolderPath;
+  final bool hideSchoolScheduleInCalendar;
 
   AppSettings copyWith({
     String? themeMode,
@@ -1270,6 +1457,7 @@ class AppSettings {
     int? gasNotificationDays,
     String? lastSeenWhatsNewVersion,
     String? backupFolderPath,
+    bool? hideSchoolScheduleInCalendar,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -1284,6 +1472,8 @@ class AppSettings {
       lastSeenWhatsNewVersion:
           lastSeenWhatsNewVersion ?? this.lastSeenWhatsNewVersion,
       backupFolderPath: backupFolderPath ?? this.backupFolderPath,
+      hideSchoolScheduleInCalendar:
+          hideSchoolScheduleInCalendar ?? this.hideSchoolScheduleInCalendar,
     );
   }
 
@@ -1299,6 +1489,7 @@ class AppSettings {
     'gasNotificationDays': gasNotificationDays,
     'lastSeenWhatsNewVersion': lastSeenWhatsNewVersion,
     'backupFolderPath': backupFolderPath,
+    'hideSchoolScheduleInCalendar': hideSchoolScheduleInCalendar,
   };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -1337,6 +1528,8 @@ class AppSettings {
     final gasNotificationDaysValue = json['gasNotificationDays'];
     final lastSeenWhatsNewVersionValue = json['lastSeenWhatsNewVersion'];
     final backupFolderPathValue = json['backupFolderPath'];
+    final hideSchoolScheduleInCalendarValue =
+        json['hideSchoolScheduleInCalendar'];
 
     return AppSettings(
       themeMode: safeThemeMode,
@@ -1360,6 +1553,9 @@ class AppSettings {
       backupFolderPath: backupFolderPathValue is String
           ? backupFolderPathValue
           : '',
+      hideSchoolScheduleInCalendar: hideSchoolScheduleInCalendarValue is bool
+          ? hideSchoolScheduleInCalendarValue
+          : false,
     );
   }
 }

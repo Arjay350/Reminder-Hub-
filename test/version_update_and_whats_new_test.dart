@@ -6,29 +6,28 @@ import 'package:reminder_hub/screens/about/about_screen.dart';
 import 'package:reminder_hub/widgets/whats_new_dialog.dart';
 
 void main() {
-  test('app version and release registry are 1.3.1', () {
-    expect(AppConstants.appVersion, '1.3.1');
-    final release = WhatsNewRegistry.getRelease('1.3.1');
+  test('app version and release registry are 1.4.0', () {
+    expect(AppConstants.appVersion, '1.4.0');
+    final release = WhatsNewRegistry.getRelease('1.4.0');
     expect(release, isNotNull);
-    expect(release!.appTitle, 'Reminder Hub 1.3.1');
-    expect(release.items.length, 12);
+    expect(release!.appTitle, 'Reminder Hub 1.4.0');
+    expect(release.items.length, 6);
     expect(
       release.items.map((item) => item.title),
       containsAll(<String>[
-        'Backup and Restore',
-        'School Schedule Sharing',
-        'Reliable Scheduled Notifications',
-        'Fresh Reminders Hub List Updates',
-        'Improved School and Bills Widgets',
-        'Widget Navigation Fixes',
-        'Preserved Paid Bill History',
-        'Removed Notification History',
-        'School Hub and Study Timer',
-        'Active AI Resets by Provider',
-        'Clearer AI Reset Status',
-        'Password Visibility Controls',
+        'Dynamic Local Pet Companion',
+        'Customizable Cat Coats & Feeding',
+        'Interactive Gestures & Purrs',
+        'School Timetable & Study Sync',
+        'AI Resets & Cooldown Improvements',
+        'Bug Fixes & UI Improvements',
       ]),
     );
+
+    // Verify 1.3.1 backward-compatibility release registry remains intact
+    final legacyRelease = WhatsNewRegistry.getRelease('1.3.1');
+    expect(legacyRelease, isNotNull);
+    expect(legacyRelease!.items.length, 12);
   });
 
   test('old settings still default the release version field safely', () {
@@ -74,8 +73,8 @@ void main() {
     expect(settings.notificationTime, '09:00 AM');
   });
 
-  testWidgets('WhatsNewDialog renders the 1.3.1 release', (tester) async {
-    final release = WhatsNewRegistry.getRelease('1.3.1')!;
+  testWidgets('WhatsNewDialog renders the 1.4.0 release', (tester) async {
+    final release = WhatsNewRegistry.getRelease('1.4.0')!;
     var dismissed = false;
 
     await tester.pumpWidget(
@@ -91,8 +90,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('What\'s New'), findsOneWidget);
-    expect(find.text('Version 1.3.1'), findsOneWidget);
-    expect(find.text('Backup and Restore'), findsOneWidget);
+    expect(find.text('Version 1.4.0'), findsOneWidget);
+    expect(find.text('Dynamic Local Pet Companion'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(ElevatedButton, 'Got It'));
     expect(dismissed, isTrue);
@@ -104,16 +103,16 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: AboutScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Version 1.3.1 • 100% Offline & Private'), findsOneWidget);
+    expect(find.text('Version 1.4.0 • 100% Offline & Private'), findsOneWidget);
     expect(find.text('What\'s New'), findsOneWidget);
     expect(
-      find.text('Version 1.3.1 • See what\'s new and improved.'),
+      find.text('Version 1.4.0 • See what\'s new and improved.'),
       findsOneWidget,
     );
-    expect(find.text('Backup and Restore'), findsNothing);
+    expect(find.text('Dynamic Local Pet Companion'), findsNothing);
     await tester.tap(find.text('View Updates'));
     await tester.pumpAndSettle();
-    expect(find.text('Backup and Restore'), findsOneWidget);
+    expect(find.text('Dynamic Local Pet Companion'), findsOneWidget);
   });
 
   testWidgets('AboutScreen opens the circular developer profile', (

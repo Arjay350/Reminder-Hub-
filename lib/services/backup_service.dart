@@ -85,6 +85,7 @@ class BackupService {
       'bills': hive.getBills().map((e) => e.toJson()).toList(),
       'gasPurchases': hive.getGasPurchases().map((e) => e.toJson()).toList(),
       'suppliers': hive.getSuppliers().map((e) => e.toJson()).toList(),
+      'birthdays': hive.getBirthdays().map((e) => e.toJson()).toList(),
       'settings': hive.getSettings().toJson(),
     };
     final contents = const JsonEncoder.withIndent('  ').convert(data);
@@ -207,6 +208,9 @@ class BackupService {
       }
       for (final item in parsed.suppliers) {
         await hive.saveSupplier(item);
+      }
+      for (final item in parsed.birthdays) {
+        await hive.saveBirthday(item);
       }
       if (parsed.settings != null) {
         await hive.saveSettings(parsed.settings!);
@@ -412,6 +416,7 @@ class BackupService {
         bills: list('bills', Bill.fromJson),
         gasPurchases: list('gasPurchases', GasPurchase.fromJson),
         suppliers: list('suppliers', Supplier.fromJson),
+        birthdays: list('birthdays', Birthday.fromJson),
         settings: settings,
         dayModes: _parseDayModes(data['schoolDayModes']),
         dataVersion:
@@ -472,6 +477,7 @@ class _ParsedFullBackup {
     required this.bills,
     required this.gasPurchases,
     required this.suppliers,
+    required this.birthdays,
     required this.settings,
     required this.dayModes,
     required this.dataVersion,
@@ -484,6 +490,7 @@ class _ParsedFullBackup {
   final List<Bill> bills;
   final List<GasPurchase> gasPurchases;
   final List<Supplier> suppliers;
+  final List<Birthday> birthdays;
   final AppSettings? settings;
   final Map<int, String> dayModes;
   final int dataVersion;

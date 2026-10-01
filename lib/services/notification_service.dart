@@ -405,7 +405,9 @@ class NotificationService {
       );
       return true;
     } catch (e) {
-      debugPrint('Preferred alarm scheduling failed for id=$id ($e). Retrying inexact...');
+      debugPrint(
+        'Preferred alarm scheduling failed for id=$id ($e). Retrying inexact...',
+      );
       try {
         await _notificationsPlugin.zonedSchedule(
           id,
@@ -810,6 +812,84 @@ class NotificationService {
     }
   }
 
+  int _birthdayNotificationId(String birthdayId, String suffix) {
+    return _idFromUuid('${birthdayId}_$suffix');
+  }
+
+  Future<void> cancelBirthdayNotifications(Birthday birthday) async {
+    if (kIsWeb) return;
+    await cancelNotification(_birthdayNotificationId(birthday.id, '7DAY'));
+    await cancelNotification(_birthdayNotificationId(birthday.id, '1DAY'));
+    await cancelNotification(_birthdayNotificationId(birthday.id, 'DAYOF'));
+  }
+
+  Future<void> scheduleBirthdayNotifications(Birthday birthday) async {
+    if (kIsWeb) return;
+
+    await cancelBirthdayNotifications(birthday);
+
+    final nextBirthday = birthday.nextBirthdayDate;
+    final birthdayDate = DateTime(
+      nextBirthday.year,
+      nextBirthday.month,
+      nextBirthday.day,
+    );
+    final now = DateTime.now();
+
+    if (birthday.remind7DaysBefore) {
+      final target = birthdayDate.subtract(const Duration(days: 7));
+      final scheduled = _parseTimeOnDate(target, birthday.reminderTime);
+      if (scheduled.isAfter(now)) {
+        final age = birthday.turningAgeFor(scheduled);
+        await scheduleNotification(
+          id: _birthdayNotificationId(birthday.id, '7DAY'),
+          title: '🎁 ${birthday.name}\'s birthday is in 1 week!',
+          body: age == null
+              ? 'Time to plan a gift.'
+              : 'Turning $age — Time to plan a gift.',
+          scheduledDate: scheduled,
+          channelId: channelIdGeneral,
+          channelName: channelNameGeneral,
+          channelDescription: channelDescGeneral,
+          payload: 'birthday:${birthday.id}:7day',
+        );
+      }
+    }
+
+    if (birthday.remind1DayBefore) {
+      final target = birthdayDate.subtract(const Duration(days: 1));
+      final scheduled = _parseTimeOnDate(target, birthday.reminderTime);
+      if (scheduled.isAfter(now)) {
+        await scheduleNotification(
+          id: _birthdayNotificationId(birthday.id, '1DAY'),
+          title: '🎉 ${birthday.name}\'s birthday is tomorrow!',
+          body: 'Get ready to celebrate!',
+          scheduledDate: scheduled,
+          channelId: channelIdGeneral,
+          channelName: channelNameGeneral,
+          channelDescription: channelDescGeneral,
+          payload: 'birthday:${birthday.id}:1day',
+        );
+      }
+    }
+
+    if (birthday.remindOnDay) {
+      final scheduled = _parseTimeOnDate(birthdayDate, birthday.reminderTime);
+      if (scheduled.isAfter(now)) {
+        await scheduleNotification(
+          id: _birthdayNotificationId(birthday.id, 'DAYOF'),
+          title: '🎂 Today is ${birthday.name}\'s birthday!',
+          body: "Don't forget to greet them!",
+          scheduledDate: scheduled,
+          channelId: channelIdGeneral,
+          channelName: channelNameGeneral,
+          channelDescription: channelDescGeneral,
+          payload: 'birthday:${birthday.id}:day',
+        );
+      }
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Reschedule All (Reboot & App Startup Synchronization)
   // ---------------------------------------------------------------------------
@@ -901,6 +981,23 @@ class NotificationService {
     } catch (e) {
       debugPrint(
         'NotificationService.rescheduleAll: AI accounts reconciliation error: $e',
+      );
+    }
+
+    // 5. Birthdays
+    try {
+      for (final birthday in hive.getBirthdays()) {
+        try {
+          await scheduleBirthdayNotifications(birthday);
+        } catch (itemErr) {
+          debugPrint(
+            'NotificationService.rescheduleAll: Error scheduling birthday ${birthday.id}: $itemErr',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint(
+        'NotificationService.rescheduleAll: Birthdays reconciliation error: $e',
       );
     }
 

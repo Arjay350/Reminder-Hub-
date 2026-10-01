@@ -5,6 +5,7 @@ import 'ai_account_dialog.dart';
 import 'user_account_dialog.dart';
 import 'gas_purchase_dialog.dart';
 import 'school_class_dialog.dart';
+import 'birthday_dialog.dart';
 
 class QuickAddModal extends StatelessWidget {
   const QuickAddModal({super.key});
@@ -33,7 +34,9 @@ class QuickAddModal extends StatelessWidget {
               width: 48,
               height: 4.5,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E294B) : const Color(0xFFE2E8F0),
+                color: isDark
+                    ? const Color(0xFF1E294B)
+                    : const Color(0xFFE2E8F0),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -143,6 +146,23 @@ class QuickAddModal extends StatelessWidget {
           const SizedBox(height: 12),
           _quickOption(
             context,
+            title: 'Add Birthday',
+            subtitle: 'Friends, family, milestones, and gift ideas',
+            icon: Icons.cake_rounded,
+            color: const Color(0xFFF472B6),
+            onTap: () {
+              Navigator.pop(context);
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const BirthdayDialog(),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _quickOption(
+            context,
             title: 'Add LPG Order',
             subtitle: 'Record LPG/Gas refill & estimate empty date',
             icon: Icons.propane_tank_rounded,
@@ -200,7 +220,11 @@ class QuickAddModal extends StatelessWidget {
           subtitle,
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          size: 20,
+          color: Colors.grey,
+        ),
       ),
     );
   }

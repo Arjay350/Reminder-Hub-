@@ -1,7 +1,24 @@
-2026/09/27-23:57:38.507 3708 Reusing MANIFEST C:\Users\rjxas\AppData\Local\Temp\flutter_tools.1db8dc67\flutter_tools_chrome_device.86ccd66f\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
-2026/09/27-23:57:38.644 3708 Recovering log #16
-2026/09/27-23:57:38.725 3708 Reusing old log C:\Users\rjxas\AppData\Local\Temp\flutter_tools.1db8dc67\flutter_tools_chrome_device.86ccd66f\Default\EdgeCoupons/coupons_data.db/000016.log 
-2026/09/27-23:57:38.730 3708 Delete type=0 #4
-2026/09/27-23:57:38.731 3708 Delete type=0 #7
-2026/09/27-23:57:38.731 3708 Delete type=0 #10
-2026/09/27-23:57:38.733 3708 Delete type=0 #13
+2026/09/30-16:57:01.256 6630 Reusing MANIFEST C:\Users\rjxas\AppData\Local\Temp\flutter_tools.7450f5d1\flutter_tools_chrome_device.a970a73e\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/09/30-16:57:01.262 6630 Recovering log #36
+2026/09/30-16:57:01.264 6630 Reusing old log C:\Users\rjxas\AppData\Local\Temp\flutter_tools.7450f5d1\flutter_tools_chrome_device.a970a73e\Default\EdgeCoupons/coupons_data.db/000036.log 
+2026/09/30-16:57:01.268 6630 Delete type=0 #4
+2026/09/30-16:57:01.268 6630 Delete type=0 #7
+2026/09/30-16:57:01.268 6630 Delete type=2 #8
+2026/09/30-16:57:01.268 6630 Delete type=0 #10
+2026/09/30-16:57:01.268 6630 Delete type=2 #11
+2026/09/30-16:57:01.268 6630 Delete type=0 #13
+2026/09/30-16:57:01.268 6630 Delete type=2 #14
+2026/09/30-16:57:01.943 6630 Delete type=0 #16
+2026/09/30-16:57:02.304 6630 Delete type=2 #17
+2026/09/30-16:57:02.568 6630 Delete type=0 #19
+2026/09/30-16:57:02.676 6630 Delete type=2 #21
+2026/09/30-16:57:02.705 6630 Delete type=0 #23
+2026/09/30-16:57:02.736 6630 Delete type=2 #24
+2026/09/30-16:57:02.751 6630 Delete type=0 #26
+2026/09/30-16:57:02.798 6630 Delete type=2 #27
+2026/09/30-16:57:03.404 6630 Delete type=0 #29
+2026/09/30-16:57:03.451 6630 Delete type=2 #30
+2026/09/30-16:57:03.481 6630 Delete type=0 #32
+2026/09/30-16:58:30.046 2db4 Level-0 table #40: started
+2026/09/30-16:58:30.049 2db4 Level-0 table #40: 683467 bytes OK
+2026/09/30-16:58:30.050 2db4 Delete type=0 #36

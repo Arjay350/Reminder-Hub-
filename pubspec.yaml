@@ -1,7 +1,7 @@
 name: reminder_hub
 description: "Reminder Hub - Offline Reminder, Account & Household Tracker"
 publish_to: 'none'
-version: 1.3.1+8
+version: 1.4.0+9
 
 environment:
   sdk: ^3.12.2
@@ -40,6 +40,7 @@ dependencies:
   shimmer: ^3.0.0
   lottie: ^3.1.2
   flutter_timezone: ^5.1.0
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -59,3 +60,5 @@ flutter:
     - assets/animations/
     - assets/images/
     - assets/images/app_icon.png
+    - assets/pet/cat/
+    - assets/audio/pet/

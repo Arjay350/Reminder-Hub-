@@ -32,9 +32,12 @@ class AIAccountsScreen extends StatefulWidget {
 
 class _AIAccountsScreenState extends State<AIAccountsScreen> {
   final HiveService _hive = HiveService.instance;
+  final TextEditingController _searchController = TextEditingController();
 
   List<AIAccount> _accounts = [];
   late String _selectedServiceFilter = widget.initialService ?? 'All';
+  late String _selectedStatusFilter = widget.activeOnly ? 'Active' : 'All';
+  String _searchQuery = '';
   Timer? _statusRefreshTimer;
 
   final List<String> _services = [
@@ -63,6 +66,7 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
   @override
   void dispose() {
     _statusRefreshTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -79,33 +83,101 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final allCount = _accounts.length;
+    final activeCount =
+        _accounts.where((a) => a.currentResetStatus == 'Active').length;
+    final cooldownCount =
+        _accounts.where((a) => a.currentResetStatus == 'Cooldown').length;
+
     final filtered = _accounts.where((a) {
       if (_selectedServiceFilter != 'All' &&
           a.service != _selectedServiceFilter) {
         return false;
       }
-      if (widget.activeOnly && a.currentResetStatus != 'Active') return false;
+      if (_selectedStatusFilter != 'All' &&
+          a.currentResetStatus != _selectedStatusFilter) {
+        return false;
+      }
+      if (_searchQuery.trim().isNotEmpty) {
+        final q = _searchQuery.trim().toLowerCase();
+        final matchService = a.service.toLowerCase().contains(q);
+        final matchAccount = a.accountName.toLowerCase().contains(q);
+        final matchEmail = a.email.toLowerCase().contains(q);
+        final matchUsername = a.username.toLowerCase().contains(q);
+        final matchPlan = a.plan.toLowerCase().contains(q);
+        final matchNotes = a.notes.toLowerCase().contains(q);
+        final matchStatus = a.currentResetStatus.toLowerCase().contains(q);
+        if (!matchService &&
+            !matchAccount &&
+            !matchEmail &&
+            !matchUsername &&
+            !matchPlan &&
+            !matchNotes &&
+            !matchStatus) {
+          return false;
+        }
+      }
       return true;
     }).toList();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.activeOnly
+          _selectedStatusFilter == 'Active'
               ? _selectedServiceFilter == 'All'
-                    ? 'Active AI Resets'
-                    : '${_providerLabel(_selectedServiceFilter)} — Active Resets'
-              : 'AI Accounts',
-          style: TextStyle(fontWeight: FontWeight.bold),
+                  ? 'Active AI Resets'
+                  : '${_providerLabel(_selectedServiceFilter)} — Active Resets'
+              : _selectedStatusFilter == 'Cooldown'
+                  ? _selectedServiceFilter == 'All'
+                      ? 'Cooldown AI Accounts'
+                      : '${_providerLabel(_selectedServiceFilter)} — Cooldown'
+                  : _selectedServiceFilter == 'All'
+                      ? 'AI Accounts'
+                      : '${_providerLabel(_selectedServiceFilter)} Accounts',
+          style: const TextStyle(fontWeight: FontWeight.bold),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ),
       body: Column(
         children: [
-          // Service filter chips
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search AI accounts, email, service...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: isDark
+                    ? const Color(0xFF141A2E)
+                    : const Color(0xFFF1F5F9),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val),
+            ),
+          ),
+
+          // Service filter chips at the top
           SizedBox(
-            height: 56,
+            height: 48,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -125,6 +197,7 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                     ).withValues(alpha: 0.15),
                     checkmarkColor: const Color(0xFF8B5CF6),
                     labelStyle: TextStyle(
+                      fontSize: 12,
                       fontWeight: isSelected
                           ? FontWeight.bold
                           : FontWeight.normal,
@@ -145,20 +218,63 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
               },
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
+
+          // Status filter chips (All, Active, Cooldown) inside below service categories
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _statusFilterChip('All', 'All', allCount, isDark),
+                const SizedBox(width: 8),
+                _statusFilterChip(
+                  'Active',
+                  'Active',
+                  activeCount,
+                  isDark,
+                  color: const Color(0xFF31A24C),
+                ),
+                const SizedBox(width: 8),
+                _statusFilterChip(
+                  'Cooldown',
+                  'Cooldown',
+                  cooldownCount,
+                  isDark,
+                  color: Colors.amber.shade700,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
 
           Expanded(
             child: filtered.isEmpty
                 ? EmptyState(
-                    title: widget.activeOnly
-                        ? _selectedServiceFilter == 'All'
-                              ? 'No Active Resets'
-                              : 'No Active ${_providerLabel(_selectedServiceFilter)} Resets'
-                        : 'No AI Accounts Saved',
-                    message: widget.activeOnly
-                        ? 'There are no active resets for this provider right now.'
-                        : 'Keep track of ChatGPT, Claude, Gemini reset schedules & passwords',
-                    icon: Icons.smart_toy_outlined,
+                    title: _searchQuery.isNotEmpty
+                        ? 'No Matches Found'
+                        : _selectedStatusFilter == 'Active'
+                            ? _selectedServiceFilter == 'All'
+                                ? 'No Active Resets'
+                                : 'No Active ${_providerLabel(_selectedServiceFilter)} Resets'
+                            : _selectedStatusFilter == 'Cooldown'
+                                ? _selectedServiceFilter == 'All'
+                                    ? 'No Accounts in Cooldown'
+                                    : 'No ${_providerLabel(_selectedServiceFilter)} in Cooldown'
+                                : 'No AI Accounts Saved',
+                    message: _searchQuery.isNotEmpty
+                        ? 'No AI accounts matching "$_searchQuery"'
+                        : _selectedStatusFilter == 'Active'
+                            ? 'There are no active resets for this selection right now.'
+                            : _selectedStatusFilter == 'Cooldown'
+                                ? 'No AI accounts are currently waiting for their reset time.'
+                                : 'Keep track of ChatGPT, Claude, Gemini reset schedules & passwords',
+                    icon: _searchQuery.isNotEmpty
+                        ? Icons.search_off_rounded
+                        : _selectedStatusFilter == 'Active'
+                            ? Icons.check_circle_outline
+                            : _selectedStatusFilter == 'Cooldown'
+                                ? Icons.schedule
+                                : Icons.smart_toy_outlined,
                     actionLabel: 'Add AI Account',
                     onAction: _openAddDialog,
                   )
@@ -471,6 +587,45 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
     );
   }
 
+  Widget _statusFilterChip(
+    String value,
+    String label,
+    int count,
+    bool isDark, {
+    Color? color,
+  }) {
+    final isSelected = _selectedStatusFilter == value;
+    final primaryColor = color ?? const Color(0xFF8B5CF6);
+    return Expanded(
+      child: FilterChip(
+        label: Center(
+          child: Text(
+            '$label ($count)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected
+                  ? primaryColor
+                  : (isDark ? Colors.grey.shade300 : Colors.black87),
+            ),
+          ),
+        ),
+        selected: isSelected,
+        onSelected: (_) => setState(() => _selectedStatusFilter = value),
+        selectedColor: primaryColor.withValues(alpha: 0.15),
+        checkmarkColor: primaryColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isSelected
+                ? primaryColor.withValues(alpha: 0.35)
+                : Colors.transparent,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _infoBadge(IconData icon, String text, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -574,11 +729,13 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
   }
 
   Future<void> _openAddDialog() async {
+    final defaultService =
+        _selectedServiceFilter != 'All' ? _selectedServiceFilter : null;
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const AIAccountDialog(),
+      builder: (_) => AIAccountDialog(initialService: defaultService),
     );
     if (result != null) _loadAccounts();
   }

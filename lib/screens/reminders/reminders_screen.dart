@@ -5,6 +5,7 @@ import '../../models/app_models.dart';
 import '../../services/hive_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/widget_service.dart';
+import '../../services/pet_service.dart';
 import '../../widgets/ai_account_dialog.dart';
 import '../../widgets/bill_dialog.dart';
 import '../../widgets/confirm_delete_dialog.dart';
@@ -802,6 +803,7 @@ class _RemindersScreenState extends State<RemindersScreen>
       );
       await _hive.saveReminder(r);
       if (completed) {
+        PetService.instance.onReminderCompleted(r);
         await NotificationService.instance.cancelNotificationForId(r.id);
       } else {
         // Attempt to reschedule — this silently skips if the date is in the past.
@@ -881,6 +883,7 @@ class _RemindersScreenState extends State<RemindersScreen>
       if (!bill.isRecurring) {
         final updated = bill.copyWith(paid: true);
         await _hive.saveBill(updated);
+        PetService.instance.onBillPaid(updated);
         await NotificationService.instance.cancelNotificationForId(bill.id);
         try {
           await WidgetService.instance.updateBillsWidget();
@@ -918,6 +921,7 @@ class _RemindersScreenState extends State<RemindersScreen>
 
       // Step 4: Save to Hive
       await _hive.saveBill(updated);
+      PetService.instance.onBillPaid(updated);
 
       // Step 5: Cancel old notification and schedule for the next due date
       await NotificationService.instance.cancelNotificationForId(bill.id);

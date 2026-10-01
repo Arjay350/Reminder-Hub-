@@ -6,9 +6,10 @@ import '../services/hive_service.dart';
 import '../services/notification_service.dart';
 
 class AIAccountDialog extends StatefulWidget {
-  const AIAccountDialog({super.key, this.account});
+  const AIAccountDialog({super.key, this.account, this.initialService});
 
   final AIAccount? account;
+  final String? initialService;
 
   @override
   State<AIAccountDialog> createState() => _AIAccountDialogState();
@@ -63,7 +64,15 @@ class _AIAccountDialogState extends State<AIAccountDialog> {
   void initState() {
     super.initState();
     final a = widget.account;
-    _service = a?.service ?? 'ChatGPT';
+    if (a != null) {
+      _service = a.service;
+    } else if (widget.initialService != null &&
+        widget.initialService != 'All' &&
+        _services.contains(widget.initialService)) {
+      _service = widget.initialService!;
+    } else {
+      _service = 'ChatGPT';
+    }
     _accountName = a?.accountName ?? 'Personal';
     _authMethod =
         a?.authMethod ?? (a?.isGoogleAuth == true ? 'Google' : 'Password');
