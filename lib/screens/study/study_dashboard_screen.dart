@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/study_models.dart';
 import '../../services/study_service.dart';
+import '../../services/pet_service.dart';
 
 class StudyDashboardScreen extends StatefulWidget {
   const StudyDashboardScreen({super.key});
@@ -526,11 +527,30 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _state == null) return;
+      final oldCompleted = _state!.completed;
+      final oldPhase = _state!.phase;
       final updated = _studyService.syncWithNow(_state!);
       setState(() {
         _state = updated;
       });
       _studyService.saveActiveTimerState(updated);
+
+      if (updated.completed && !oldCompleted) {
+        PetService.instance.onStudyTimerUpdated(
+          isRunning: false,
+          isBreak: false,
+          isCompleted: true,
+          subject: updated.subject,
+        );
+      } else if (updated.phase != oldPhase) {
+        PetService.instance.onStudyTimerUpdated(
+          isRunning: updated.isRunning,
+          isBreak: updated.phase == StudyPhase.shortBreak ||
+              updated.phase == StudyPhase.longBreak,
+          isCompleted: false,
+          subject: updated.subject,
+        );
+      }
     });
   }
 
@@ -546,6 +566,13 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     _stopTicker();
     setState(() => _state = updated);
     _studyService.saveActiveTimerState(updated);
+    PetService.instance.onStudyTimerUpdated(
+      isRunning: false,
+      isBreak: updated.phase == StudyPhase.shortBreak ||
+          updated.phase == StudyPhase.longBreak,
+      isCompleted: false,
+      subject: updated.subject,
+    );
   }
 
   void _resume() {
@@ -554,6 +581,13 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     setState(() => _state = updated);
     _studyService.saveActiveTimerState(updated);
     _startTicker();
+    PetService.instance.onStudyTimerUpdated(
+      isRunning: true,
+      isBreak: updated.phase == StudyPhase.shortBreak ||
+          updated.phase == StudyPhase.longBreak,
+      isCompleted: false,
+      subject: updated.subject,
+    );
   }
 
   Future<bool> _confirmSessionAction({
@@ -610,11 +644,23 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     setState(() => _state = updated);
     _studyService.saveActiveTimerState(updated);
     _startTicker();
+    PetService.instance.onStudyTimerUpdated(
+      isRunning: updated.isRunning,
+      isBreak: updated.phase == StudyPhase.shortBreak ||
+          updated.phase == StudyPhase.longBreak,
+      isCompleted: updated.completed,
+      subject: updated.subject,
+    );
   }
 
   Future<void> _changeMode() async {
     _stopTicker();
     await _studyService.clearActiveTimerState();
+    PetService.instance.onStudyTimerUpdated(
+      isRunning: false,
+      isBreak: false,
+      isCompleted: false,
+    );
     if (!mounted) return;
     setState(() => _state = null);
   }
@@ -631,6 +677,12 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     final runningState = _studyService.resumeTimer(state);
     setState(() => _state = runningState);
     await _studyService.saveActiveTimerState(runningState);
+    PetService.instance.onStudyTimerUpdated(
+      isRunning: true,
+      isBreak: false,
+      isCompleted: false,
+      subject: runningState.subject,
+    );
     final updatedSettings = _studyService.getStudySettings().copyWith(
       selectedSubject: subject,
       selectedMethodId: method.id,
@@ -706,6 +758,12 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
     );
     await _studyService.saveStudyHistoryRecord(record);
     await _studyService.clearActiveTimerState();
+    PetService.instance.onStudyTimerUpdated(
+      isRunning: false,
+      isBreak: false,
+      isCompleted: true,
+      subject: record.subject,
+    );
     if (!mounted) return;
     Navigator.of(context).pop();
   }

@@ -9,6 +9,7 @@ import '../../widgets/custom_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/school_class_dialog.dart';
 import '../../widgets/weekly_timetable_widget.dart';
+import '../../services/pet_service.dart';
 
 class SchoolScheduleScreen extends StatefulWidget {
   const SchoolScheduleScreen({super.key});
@@ -59,6 +60,8 @@ class _SchoolScheduleScreenState extends State<SchoolScheduleScreen> {
       _classes = _hive.getSchoolClasses();
       _dayModes = _hive.getDayClassModes();
     });
+    PetService.instance.onScheduleChecked();
+    PetService.instance.checkUpcomingEvents(schoolClasses: _classes);
     await WidgetService.instance.updateSchoolWidget();
   }
 
@@ -427,8 +430,15 @@ class _SchoolScheduleScreenState extends State<SchoolScheduleScreen> {
                     child: FilterChip(
                       label: Text(label),
                       selected: isSelected,
-                      onSelected: (_) =>
-                          setState(() => _selectedDayFilter = day),
+                      onSelected: (_) {
+                        setState(() => _selectedDayFilter = day);
+                        final tomorrowWeekday = (DateTime.now().weekday % 7) + 1;
+                        if (day == tomorrowWeekday) {
+                          PetService.instance.onScheduleChecked(isTomorrow: true);
+                        } else if (day == DateTime.now().weekday || day == 0) {
+                          PetService.instance.onScheduleChecked();
+                        }
+                      },
                       selectedColor: const Color(
                         0xFF14B8A6,
                       ).withValues(alpha: 0.15),

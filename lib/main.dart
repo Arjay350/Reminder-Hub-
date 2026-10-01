@@ -12,6 +12,7 @@ import 'services/hive_service.dart';
 import 'services/notification_service.dart';
 import 'services/password_route_observer.dart';
 import 'services/widget_service.dart';
+import 'services/pet_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,11 @@ void main() async {
     await HiveService.instance.init();
   } catch (e) {
     debugPrint('Hive init warning: $e');
+  }
+  try {
+    await PetService.instance.init();
+  } catch (e) {
+    debugPrint('Pet init warning: $e');
   }
   try {
     await NotificationService.instance.init();
@@ -75,11 +81,13 @@ class _ReminderHubAppState extends State<ReminderHubApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      PetService.instance.resume();
       WidgetService.instance.updateSchoolWidget();
       WidgetService.instance.updateBillsWidget();
       NotificationService.instance.rescheduleAll();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
+      PetService.instance.suspend();
       WidgetService.instance.updateSchoolWidget();
       WidgetService.instance.updateBillsWidget();
     }

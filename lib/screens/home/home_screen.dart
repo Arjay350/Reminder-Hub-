@@ -27,6 +27,8 @@ import '../search/global_search_screen.dart';
 import '../../widgets/quick_add_modal.dart';
 import '../../widgets/school_class_dialog.dart';
 import '../../widgets/whats_new_dialog.dart';
+import '../../widgets/pet/pet_companion_card.dart';
+import '../../services/pet_service.dart';
 import '../../core/constants/app_constants.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -49,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<UserAccount> _userAccounts = [];
   List<AIAccount> _aiAccounts = [];
   List<GasPurchase> _gasPurchases = [];
+  List<Birthday> _birthdays = [];
   int _todayFocusMinutes = 0;
   AppSettings? _settings;
   StudyTimerState? _activeStudyState;
@@ -93,6 +96,30 @@ class _HomeScreenState extends State<HomeScreen> {
             .where((session) => Formatters.isSameDay(session.startedAt, today))
             .fold(0, (total, session) => total + session.durationMinutes);
       });
+
+      // Synchronize class schedule and study timer state with pet companion
+      final hasActive = status.currentClasses.isNotEmpty;
+      final hasNext = status.nextClass != null;
+      final currentName =
+          status.currentClasses.firstOrNull?.schoolClass.subject;
+      final nextName = status.nextClass?.schoolClass.subject;
+      PetService.instance.onClassStatusChanged(
+        isClassHappening: hasActive,
+        isClassUpcoming: hasNext,
+        className: currentName ?? nextName,
+      );
+
+      final study = _activeStudyState;
+      if (study != null) {
+        PetService.instance.onStudyTimerUpdated(
+          isRunning: study.isRunning,
+          isBreak:
+              study.phase == StudyPhase.shortBreak ||
+              study.phase == StudyPhase.longBreak,
+          isCompleted: study.completed,
+          subject: study.subject,
+        );
+      }
     }
   }
 
@@ -106,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _bills = _hive.getBills();
       _userAccounts = _hive.getUserAccounts();
       _aiAccounts = _hive.getAIAccounts();
+      _birthdays = _hive.getBirthdays();
       _activeStudyState = StudyService.instance.getActiveTimerState();
       _todayFocusMinutes = StudyService.instance
           .getStudyHistory()
@@ -118,6 +146,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _settings = settings;
     });
     _updateTimetableStatus();
+    PetService.instance.checkUpcomingEvents(
+      reminders: _reminders,
+      bills: _bills,
+      birthdays: _birthdays,
+    );
 
     // Check first-time setup for name
     if (!settings.nameSetupCompleted &&
@@ -473,6 +506,118 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildUpcomingBirthdaysCard(
+    BuildContext context,
+    List<Birthday> birthdays,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final upcoming =
+        birthdays.where((birthday) => birthday.daysUntilNext <= 14).toList()
+          ..sort((a, b) => a.daysUntilNext.compareTo(b.daysUntilNext));
+
+    if (upcoming.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF151F34) : const Color(0xFFFFF1F6),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFFF472B6).withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cake_rounded, color: Color(0xFFF472B6)),
+              const SizedBox(width: 8),
+              Text(
+                'Upcoming Birthdays',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...upcoming.take(3).map((birthday) {
+            final days = birthday.daysUntilNext;
+            String badge;
+            if (days == 0) {
+              badge = birthday.turningAge == null
+                  ? '🎂 Today'
+                  : '🎂 Today · Turns ${birthday.turningAge}';
+            } else if (days == 1) {
+              badge = birthday.turningAge == null
+                  ? '🎂 Tomorrow'
+                  : '🎂 Tomorrow · Turns ${birthday.turningAge}';
+            } else {
+              badge = birthday.turningAge == null
+                  ? '🎉 In $days days'
+                  : '🎉 In $days days · Turns ${birthday.turningAge}';
+            }
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          birthday.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (birthday.relationship.isNotEmpty)
+                          Text(
+                            birthday.relationship,
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9A8D4).withValues(alpha: 0.24),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(
+                        color: Color(0xFFBE185D),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget _heroDetailChip(IconData icon, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
@@ -775,42 +920,90 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActiveAIResets(BuildContext context) {
-    final activeResetsByProvider = <String, List<AIAccount>>{};
+  Widget _buildAIResetsSection(BuildContext context) {
+    final resetsByProvider = <String, List<AIAccount>>{};
     for (final account in _aiAccounts) {
-      if (account.currentResetStatus == 'Active') {
-        activeResetsByProvider
-            .putIfAbsent(account.service, () => [])
-            .add(account);
-      }
+      resetsByProvider.putIfAbsent(account.service, () => []).add(account);
     }
-    final providers = activeResetsByProvider.keys.toList()..sort();
+    final providers = resetsByProvider.keys.toList()..sort();
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Active AI Resets',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.smart_toy_rounded,
+                  size: 20,
+                  color: Color(0xFF8B5CF6),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'AI Resets',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.3,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(builder: (_) => const AIAccountsScreen()),
+                  )
+                  .then((_) => _refreshData()),
+              child: const Text('Manage'),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         if (providers.isEmpty)
           Card(
             child: ListTile(
               leading: const Icon(Icons.smart_toy_outlined),
-              title: const Text('No active resets'),
-              subtitle: const Text('Resets become active automatically at the saved time'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AIAccountsScreen()),
+              title: const Text('No AI accounts'),
+              subtitle: const Text(
+                'Add accounts to track reset schedules and cooldowns',
               ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(builder: (_) => const AIAccountsScreen()),
+                  )
+                  .then((_) => _refreshData()),
             ),
           ),
         ...providers.map((provider) {
-          final accounts = activeResetsByProvider[provider]!;
+          final accounts = resetsByProvider[provider]!;
+          final activeAccounts = accounts
+              .where((a) => a.currentResetStatus == 'Active')
+              .toList();
+          final cooldownAccounts = accounts
+              .where((a) => a.currentResetStatus == 'Cooldown')
+              .toList();
           final label = provider == 'GitHub Copilot' ? 'Copilot' : provider;
+
+          String statusSubtitle;
+          if (activeAccounts.isNotEmpty && cooldownAccounts.isNotEmpty) {
+            statusSubtitle =
+                '${activeAccounts.length} Active · ${cooldownAccounts.length} Cooldown';
+          } else if (activeAccounts.isNotEmpty) {
+            statusSubtitle =
+                '${activeAccounts.length} Active · ${activeAccounts.map((a) => a.accountName).join(', ')}';
+          } else {
+            statusSubtitle =
+                '${cooldownAccounts.length} Cooldown · ${cooldownAccounts.map((a) => a.accountName).join(', ')}';
+          }
+
+          final hasActive = activeAccounts.isNotEmpty;
+
           return Card(
             child: ListTile(
               leading: Icon(
@@ -819,30 +1012,76 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               title: Text(label),
               subtitle: Text(
-                '${accounts.length} Active · ${accounts.map((account) => account.accountName).join(', ')}',
+                statusSubtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF31A24C),
+                style: TextStyle(
+                  color: hasActive
+                      ? const Color(0xFF31A24C)
+                      : (isDark
+                            ? Colors.amber.shade300
+                            : Colors.amber.shade800),
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              trailing: const Row(
+              trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle, color: Color(0xFF31A24C), size: 18),
-                  SizedBox(width: 8),
-                  Icon(Icons.chevron_right),
+                  if (activeAccounts.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF31A24C).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${activeAccounts.length} Active',
+                        style: const TextStyle(
+                          color: Color(0xFF31A24C),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  if (cooldownAccounts.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(
+                          alpha: isDark ? 0.2 : 0.15,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${cooldownAccounts.length} Cooldown',
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.amber.shade200
+                              : Colors.amber.shade900,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  const Icon(Icons.chevron_right),
                 ],
               ),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => AIAccountsScreen(
-                    initialService: provider,
-                    activeOnly: true,
-                  ),
-                ),
-              ),
+              onTap: () => Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AIAccountsScreen(initialService: provider),
+                    ),
+                  )
+                  .then((_) => _refreshData()),
             ),
           );
         }),
@@ -1061,6 +1300,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Dynamic Local Pet Companion
+                  const PetCompanionCard(),
+
+                  const SizedBox(height: 18),
+                  _buildUpcomingBirthdaysCard(context, _birthdays),
+                  const SizedBox(height: 18),
+
                   Text(
                     'Your day at a glance',
                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -1196,7 +1442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 4),
                   _buildFocusPanel(context),
                   const SizedBox(height: 16),
-                  _buildActiveAIResets(context),
+                  _buildAIResetsSection(context),
                   const SizedBox(height: 8),
 
                   // Quick Actions Section
@@ -1494,7 +1740,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             final authenticated = await showSecureActionGate(
                               context,
                               title: 'Unlock Account Manager',
-                              message: 'Enter your PIN or use fingerprint to continue.',
+                              message:
+                                  'Enter your PIN or use fingerprint to continue.',
                             );
                             if (!authenticated || !context.mounted) return;
                             await Navigator.push(
@@ -1614,10 +1861,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 onChanged: (val) async {
-                                  final updated = r.copyWith(
-                                    completed: val ?? false,
-                                  );
+                                  final isDone = val ?? false;
+                                  final updated = r.copyWith(completed: isDone);
                                   await _hive.saveReminder(updated);
+                                  if (isDone) {
+                                    PetService.instance.onReminderCompleted(
+                                      updated,
+                                    );
+                                  }
                                   _refreshData();
                                 },
                               ),

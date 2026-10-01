@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppConstants {
   static const String appName = 'Reminder Hub';
-  static const String appVersion = '1.3.1';
+  static const String appVersion = '1.4.0';
 
   static const Color primaryColor = Color(0xFF4F46E5);
   static const Color primaryLightColor = Color(0xFF818CF8);

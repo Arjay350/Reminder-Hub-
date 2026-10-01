@@ -19,6 +19,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   List<AIAccount> _aiAccounts = [];
   List<UserAccount> _userAccounts = [];
   List<GasPurchase> _gasPurchases = [];
+  List<Birthday> _birthdays = [];
 
   String _query = '';
 
@@ -37,6 +38,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       _aiAccounts = _hive.getAIAccounts();
       _userAccounts = _hive.getUserAccounts();
       _gasPurchases = _hive.getGasPurchases();
+      _birthdays = _hive.getBirthdays();
     });
   }
 
@@ -100,12 +102,25 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               )
               .toList();
 
+    final matchedBirthdays = q.isEmpty
+        ? <Birthday>[]
+        : _birthdays
+              .where(
+                (b) =>
+                    b.name.toLowerCase().contains(q) ||
+                    b.relationship.toLowerCase().contains(q) ||
+                    b.giftIdeas.toLowerCase().contains(q) ||
+                    b.customNotes.toLowerCase().contains(q),
+              )
+              .toList();
+
     final totalMatches =
         matchedReminders.length +
         matchedBills.length +
         matchedAIAccounts.length +
         matchedUserAccounts.length +
-        matchedGas.length;
+        matchedGas.length +
+        matchedBirthdays.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -217,6 +232,20 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                       ),
                       title: Text('${g.gasType} (${g.tankSize})'),
                       subtitle: Text('Supplier: ${g.supplierName}'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (matchedBirthdays.isNotEmpty) ...[
+                  _sectionHeader('Birthdays (${matchedBirthdays.length})'),
+                  ...matchedBirthdays.map(
+                    (b) => ListTile(
+                      leading: const Icon(
+                        Icons.cake_rounded,
+                        color: Color(0xFFF472B6),
+                      ),
+                      title: Text(b.name),
+                      subtitle: Text('${b.relationship} • ${b.formattedDate}'),
                     ),
                   ),
                 ],

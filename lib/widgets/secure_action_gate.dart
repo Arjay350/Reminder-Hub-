@@ -32,24 +32,38 @@ class _SecureActionDialogState extends State<_SecureActionDialog> {
   String? _error;
   bool _busy = false;
   bool _biometricAvailable = false;
+  bool _hasPin = true;
 
   @override
   void initState() {
     super.initState();
-    _checkBiometrics();
+    _checkSecurity();
   }
 
-  Future<void> _checkBiometrics() async {
+  Future<void> _checkSecurity() async {
     final settings = HiveService.instance.getSettings();
-    final available = settings.biometricEnabled &&
+    final savedPin = await SecurityService.instance.getAppPin();
+    final hasPin = savedPin != null && savedPin.isNotEmpty;
+    final bioAvailable = (settings.biometricEnabled ||
+            await SecurityService.instance.isBiometricsAvailable()) &&
         await SecurityService.instance.isBiometricsAvailable();
-    if (mounted) setState(() => _biometricAvailable = available);
+    if (mounted) {
+      setState(() {
+        _hasPin = hasPin;
+        _biometricAvailable = bioAvailable;
+      });
+      if (!hasPin && bioAvailable) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _verifyBiometric();
+        });
+      }
+    }
   }
 
   Future<void> _verifyPin() async {
     if (_busy) return;
     setState(() => _busy = true);
-    final valid = await SecurityService.instance.verifyPin(_controller.text);
+    final valid = await SecurityService.instance.verifyPin(_controller.text.trim());
     if (!mounted) return;
     if (valid) {
       Navigator.of(context).pop(true);
@@ -87,27 +101,44 @@ class _SecureActionDialogState extends State<_SecureActionDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    icon: const Icon(Icons.lock_outline_rounded),
+    icon: Icon(_hasPin ? Icons.lock_outline_rounded : Icons.fingerprint_rounded),
     title: Text(widget.title),
     content: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(widget.message),
         const SizedBox(height: 16),
-        TextField(
-          controller: _controller,
-          autofocus: true,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 4,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(
-            labelText: '4-digit app PIN',
-            errorText: _error,
-            counterText: '',
-          ),
-          onSubmitted: (_) => _verifyPin(),
-        ),
+        if (_hasPin)
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: '4-digit app PIN',
+              errorText: _error,
+              counterText: '',
+            ),
+            onSubmitted: (_) => _verifyPin(),
+          )
+        else ...[
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ),
+          if (_biometricAvailable)
+            FilledButton.icon(
+              onPressed: _busy ? null : _verifyBiometric,
+              icon: const Icon(Icons.fingerprint_rounded),
+              label: const Text('Scan Fingerprint'),
+            ),
+        ],
       ],
     ),
     actions: [
@@ -115,13 +146,14 @@ class _SecureActionDialogState extends State<_SecureActionDialog> {
         onPressed: _busy ? null : () => Navigator.of(context).pop(false),
         child: const Text('Cancel'),
       ),
-      if (_biometricAvailable)
+      if (_biometricAvailable && _hasPin)
         IconButton(
           tooltip: 'Use fingerprint',
           onPressed: _busy ? null : _verifyBiometric,
           icon: const Icon(Icons.fingerprint_rounded),
         ),
-      FilledButton(onPressed: _busy ? null : _verifyPin, child: const Text('Unlock')),
+      if (_hasPin)
+        FilledButton(onPressed: _busy ? null : _verifyPin, child: const Text('Unlock')),
     ],
   );
 }

@@ -3,13 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/app_models.dart';
 import '../models/study_models.dart';
+import '../models/pet_models.dart';
 
 class HiveService {
   static final HiveService instance = HiveService._internal();
   HiveService._internal();
 
   // Data version for migrations
-  static const int currentDataVersion = 6;
+  static const int currentDataVersion = 7;
 
   Box<String>? _remindersBox;
   Box<String>? _schoolClassesBox;
@@ -19,11 +20,13 @@ class HiveService {
   Box<String>? _gasPurchasesBox;
   Box<String>? _suppliersBox;
   Box<String>? _settingsBox;
+  Box<String>? _birthdaysBox;
   Box<String>? _studyMethodsBox;
   Box<String>? _studyHistoryBox;
   Box<String>? _studyTimerBox;
   Box<String>? _studySettingsBox;
   Box<String>? _studySubjectsBox;
+  Box<String>? _petBox;
   bool _initialized = false;
 
   Future<void> init() async {
@@ -39,11 +42,13 @@ class HiveService {
     _gasPurchasesBox = await Hive.openBox<String>('gas_purchases');
     _suppliersBox = await Hive.openBox<String>('suppliers');
     _settingsBox = await Hive.openBox<String>('settings');
+    _birthdaysBox = await Hive.openBox<String>('birthdays');
     _studyMethodsBox = await Hive.openBox<String>('study_methods');
     _studyHistoryBox = await Hive.openBox<String>('study_history');
     _studyTimerBox = await Hive.openBox<String>('study_timer');
     _studySettingsBox = await Hive.openBox<String>('study_settings');
     _studySubjectsBox = await Hive.openBox<String>('study_subjects');
+    _petBox = await Hive.openBox<String>('pet');
     _initialized = true;
 
     // Run migrations after all boxes are opened
@@ -104,6 +109,16 @@ class HiveService {
     }
     if (fromVersion < 5) {
       debugPrint('Migration v4->v5: Study module defaults initialized safely.');
+    }
+    if (fromVersion < 7) {
+      debugPrint(
+        'Migration v6->v7: Safe migration for Pet Body Condition fields.',
+      );
+      final prefs = getPetPreferences();
+      if (prefs.lastBodyConditionUpdate == null) {
+        final updated = prefs.copyWith(lastBodyConditionUpdate: DateTime.now());
+        await savePetPreferences(updated);
+      }
     }
   }
 
@@ -257,6 +272,40 @@ class HiveService {
     await ensureInitialized();
     await _suppliersBox!.delete(id);
     await _suppliersBox!.flush();
+  }
+
+  // --- Birthdays ---
+  List<Birthday> getBirthdays() {
+    if (_birthdaysBox == null) return [];
+    final birthdays = _readRecords(_birthdaysBox!, Birthday.fromJson);
+    birthdays.sort((a, b) => a.nextBirthdayDate.compareTo(b.nextBirthdayDate));
+    return birthdays;
+  }
+
+  Future<void> saveBirthday(Birthday birthday) async {
+    await ensureInitialized();
+
+    if (birthday.isUserBirthday) {
+      final otherBirthdays = getBirthdays().where(
+        (item) => item.isUserBirthday && item.id != birthday.id,
+      );
+      for (final otherBirthday in otherBirthdays) {
+        final replacement = otherBirthday.copyWith(isUserBirthday: false);
+        await _birthdaysBox!.put(
+          replacement.id,
+          jsonEncode(replacement.toJson()),
+        );
+      }
+    }
+
+    await _birthdaysBox!.put(birthday.id, jsonEncode(birthday.toJson()));
+    await _birthdaysBox!.flush();
+  }
+
+  Future<void> deleteBirthday(String id) async {
+    await ensureInitialized();
+    await _birthdaysBox!.delete(id);
+    await _birthdaysBox!.flush();
   }
 
   // --- Settings ---
@@ -518,11 +567,13 @@ class HiveService {
     await _gasPurchasesBox?.clear();
     await _suppliersBox?.clear();
     await _settingsBox?.clear();
+    await _birthdaysBox?.clear();
     await _studyMethodsBox?.clear();
     await _studyHistoryBox?.clear();
     await _studyTimerBox?.clear();
     await _studySettingsBox?.clear();
     await _studySubjectsBox?.clear();
+    await _petBox?.clear();
     await _remindersBox?.flush();
     await _schoolClassesBox?.flush();
     await _aiAccountsBox?.flush();
@@ -531,10 +582,31 @@ class HiveService {
     await _gasPurchasesBox?.flush();
     await _suppliersBox?.flush();
     await _settingsBox?.flush();
+    await _birthdaysBox?.flush();
     await _studyMethodsBox?.flush();
     await _studyHistoryBox?.flush();
     await _studyTimerBox?.flush();
     await _studySettingsBox?.flush();
     await _studySubjectsBox?.flush();
+    await _petBox?.flush();
+  }
+
+  // --- Pet Companion Preferences ---
+  PetPreferences getPetPreferences() {
+    if (_petBox == null || _petBox!.isEmpty) {
+      return const PetPreferences();
+    }
+    final raw = _petBox!.get('pet_preferences');
+    if (raw == null || raw.trim().isEmpty) {
+      return const PetPreferences();
+    }
+    return PetPreferences.fromJsonString(raw);
+  }
+
+  Future<void> savePetPreferences(PetPreferences prefs) async {
+    if (_petBox == null) return;
+    await ensureInitialized();
+    await _petBox!.put('pet_preferences', prefs.toJsonString());
+    await _petBox!.flush();
   }
 }

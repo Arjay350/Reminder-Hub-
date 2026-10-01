@@ -10,6 +10,7 @@ import '../../services/timetable_calculation_service.dart';
 import '../../widgets/custom_card.dart';
 import '../school_schedule/school_schedule_screen.dart';
 import '../study/study_dashboard_screen.dart';
+import '../../services/pet_service.dart';
 
 class SchoolHubScreen extends StatefulWidget {
   const SchoolHubScreen({super.key});
@@ -55,6 +56,16 @@ class _SchoolHubScreenState extends State<SchoolHubScreen> {
           .calculateStatistics(now: now)
           .totalStudyMinutesToday;
     });
+
+    PetService.instance.onScheduleChecked();
+    PetService.instance.checkUpcomingEvents(schoolClasses: _classes);
+    final today = _today;
+    if (today != null &&
+        today.classes.isNotEmpty &&
+        today.currentClasses.isEmpty &&
+        today.nextClass == null) {
+      PetService.instance.recordTaskProgress('school_all', count: 1, setDirect: true);
+    }
   }
 
   Future<void> _openSchedule() async {

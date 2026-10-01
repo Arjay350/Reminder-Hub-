@@ -6,9 +6,13 @@ import '../../services/backup_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/hive_service.dart';
 import '../../services/widget_service.dart';
+import '../../services/pet_service.dart';
+import '../../models/pet_models.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/profile_image_cropper_dialog.dart';
+import '../../widgets/secure_action_gate.dart';
 import '../about/about_screen.dart';
+import '../pet/pet_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.onThemeChanged});
@@ -267,6 +271,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
+          // Calendar Preferences Section
+          _sectionHeader('Calendar Preferences'),
+          CustomCard(
+            padding: EdgeInsets.zero,
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 4,
+              ),
+              secondary: _settingsIconContainer(
+                Icons.calendar_month_outlined,
+                const Color(0xFF14B8A6),
+              ),
+              title: const Text(
+                'Hide School Schedule',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              subtitle: const Text(
+                'Hide recurring classes in calendar to focus on assignments & projects',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: _settings.hideSchoolScheduleInCalendar,
+              onChanged: (val) {
+                _saveSettings(
+                  _settings.copyWith(hideSchoolScheduleInCalendar: val),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Pet Companion Section
+          _sectionHeader('Pet Companion'),
+          CustomCard(
+            padding: EdgeInsets.zero,
+            child: ValueListenableBuilder<PetPreferences>(
+              valueListenable: PetService.instance.preferencesNotifier,
+              builder: (context, petPrefs, _) {
+                return Column(
+                  children: [
+                    SwitchListTile.adaptive(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      secondary: _settingsIconContainer(
+                        Icons.pets,
+                        const Color(0xFF6366F1),
+                      ),
+                      title: const Text(
+                        'Pet Companion',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      subtitle: Text(
+                        petPrefs.enabled
+                            ? '${petPrefs.name} is active on your dashboard'
+                            : 'Companion is disabled',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      value: petPrefs.enabled,
+                      onChanged: (val) async {
+                        await PetService.instance.updatePreferences(
+                          petPrefs.copyWith(enabled: val),
+                        );
+                        setState(() {});
+                      },
+                    ),
+                    if (petPrefs.enabled) ...[
+                      const Divider(
+                        height: 1,
+                        indent: 20,
+                        endIndent: 20,
+                        color: Color(0xFF1E294B),
+                      ),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 4,
+                        ),
+                        leading: _settingsIconContainer(
+                          Icons.tune,
+                          const Color(0xFF10B981),
+                        ),
+                        title: const Text(
+                          'Companion Settings & Appearance',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        subtitle: Text(
+                          'Coat: ${petPrefs.coatStyle.name} • ${petPrefs.totalPets} pats',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PetSettingsScreen(),
+                            ),
+                          ).then((_) => setState(() {}));
+                        },
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // Security Section — Fingerprint Unlock
           _sectionHeader('Security & Privacy'),
           CustomCard(
@@ -295,6 +412,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (val) {
                       await _setupAppPin();
                     } else {
+                      final authenticated = await showSecureActionGate(
+                        context,
+                        title: 'Disable App Lock PIN',
+                        message:
+                            'Enter your PIN or authenticate to turn off App Lock.',
+                      );
+                      if (!authenticated) return;
                       await SecurityService.instance.removeAppPin();
                       _saveSettings(_settings.copyWith(appLock: false));
                     }
@@ -326,19 +450,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _settings.biometricEnabled,
                   onChanged: (val) async {
                     final messenger = ScaffoldMessenger.of(context);
-                    final isAvail = await SecurityService.instance
-                        .isBiometricsAvailable();
-                    if (!isAvail && val) {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Fingerprint unlock isn\'t available on this device.',
+                    if (val) {
+                      final isAvail = await SecurityService.instance
+                          .isBiometricsAvailable();
+                      if (!isAvail) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Fingerprint unlock isn\'t available on this device.',
+                            ),
                           ),
-                        ),
+                        );
+                        return;
+                      }
+                      _saveSettings(_settings.copyWith(biometricEnabled: true));
+                    } else {
+                      final authenticated = await showSecureActionGate(
+                        context,
+                        title: 'Disable Fingerprint Unlock',
+                        message:
+                            'Authenticate to turn off fingerprint unlock.',
                       );
-                      return;
+                      if (!authenticated) return;
+                      _saveSettings(_settings.copyWith(biometricEnabled: false));
                     }
-                    _saveSettings(_settings.copyWith(biometricEnabled: val));
                   },
                 ),
               ],

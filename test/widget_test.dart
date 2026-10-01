@@ -7,6 +7,9 @@ import 'package:reminder_hub/services/timetable_calculation_service.dart';
 import 'package:reminder_hub/services/widget_service.dart';
 import 'package:reminder_hub/widgets/weekly_timetable_widget.dart';
 import 'package:reminder_hub/widgets/password_text_field.dart';
+import 'package:reminder_hub/widgets/ai_account_dialog.dart';
+import 'package:reminder_hub/widgets/secure_action_gate.dart';
+import 'package:reminder_hub/screens/ai_accounts/ai_accounts_screen.dart';
 
 void main() {
   group('GasCalculationService Unit Tests', () {
@@ -596,6 +599,76 @@ void main() {
         expect(TimetableCalculationService.getDayName(1, short: true), 'Mon');
         expect(TimetableCalculationService.getDayName(6, short: true), 'Sat');
       });
+    });
+  });
+
+  group('AIAccountDialog Widget Tests', () {
+    testWidgets('defaults to Gemini when initialService is Gemini', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AIAccountDialog(initialService: 'Gemini'),
+          ),
+        ),
+      );
+
+      expect(find.text('Gemini'), findsWidgets);
+    });
+
+    testWidgets('defaults to ChatGPT when initialService is null or All', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AIAccountDialog(initialService: 'All'),
+          ),
+        ),
+      );
+
+      expect(find.text('ChatGPT'), findsWidgets);
+    });
+  });
+
+  group('SecureActionGate Widget Tests', () {
+    testWidgets('renders dialog with title and message', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showSecureActionGate(
+                  context,
+                  title: 'Disable App Lock PIN',
+                  message: 'Enter your PIN to turn off App Lock.',
+                ),
+                child: const Text('Open Gate'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Gate'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Disable App Lock PIN'), findsOneWidget);
+      expect(find.text('Enter your PIN to turn off App Lock.'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    });
+  });
+
+  group('AIAccountsScreen Search & Status Tests', () {
+    testWidgets('renders search bar and status categories (All, Active, Cooldown)', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AIAccountsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.textContaining('Search AI accounts'), findsOneWidget);
+      expect(find.textContaining('Active ('), findsOneWidget);
+      expect(find.textContaining('Cooldown ('), findsOneWidget);
     });
   });
 }

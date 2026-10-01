@@ -34,6 +34,65 @@ class WhatsNewRelease {
 
 class WhatsNewRegistry {
   static const Map<String, WhatsNewRelease> releases = {
+    '1.4.0': WhatsNewRelease(
+      version: '1.4.0',
+      releaseDate: '2026-09-30',
+      title: 'What\'s New',
+      appTitle: 'Reminder Hub 1.4.0',
+      subtitle:
+          'Dynamic Pet Companion, improved AI resets tracking, and bug fixes.',
+      items: [
+        WhatsNewItem(
+          icon: Icons.pets_rounded,
+          iconColor: Color(0xFF6366F1),
+          title: 'Dynamic Local Pet Companion',
+          description:
+              'Meet Mochi, your animated 2D cat companion living right on your dashboard! Built natively with zero internet required.',
+        ),
+        WhatsNewItem(
+          icon: Icons.palette_rounded,
+          iconColor: Color(0xFF10B981),
+          title: 'Customizable Cat Coats & Feeding',
+          description:
+              'Choose from 4 coat styles, earn food treats from daily tasks, feed your companion with polished food visuals, and earn XP.',
+        ),
+        WhatsNewItem(
+          icon: Icons.touch_app_rounded,
+          iconColor: Color(0xFFF43F5E),
+          title: 'Interactive Gestures & Purrs',
+          description:
+              'Tap to play, swipe horizontally to pet with floating hearts, or open the care menu for feeding and bond statistics.',
+        ),
+        WhatsNewItem(
+          icon: Icons.school_rounded,
+          iconColor: Color(0xFF0D9488),
+          title: 'School Timetable & Study Sync',
+          description:
+              'Your pet wears a backpack for upcoming classes, sits with an open book during focus sessions, and celebrates finished tasks.',
+        ),
+        WhatsNewItem(
+          icon: Icons.cake_rounded,
+          iconColor: Color(0xFFF472B6),
+          title: 'Birthday & Milestone Tracker',
+          description:
+              'Keep birthdays in the calendar, mark your own special day, and let your pet react naturally to birthday reminders and celebrations.',
+        ),
+        WhatsNewItem(
+          icon: Icons.smart_toy_rounded,
+          iconColor: Color(0xFF8B5CF6),
+          title: 'AI Resets & Cooldown Improvements',
+          description:
+              'Track both Active and Cooldown AI accounts directly in the AI Resets home section with dedicated provider management.',
+        ),
+        WhatsNewItem(
+          icon: Icons.build_circle_rounded,
+          iconColor: Color(0xFFF59E0B),
+          title: 'Bug Fixes & UI Improvements',
+          description:
+              'Refined food bowl and feed button designs, fixed Home screen module layouts, and improved overall responsiveness and stability.',
+        ),
+      ],
+    ),
     '1.3.1': WhatsNewRelease(
       version: '1.3.1',
       releaseDate: '2026-09-11',
