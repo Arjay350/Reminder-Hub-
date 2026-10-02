@@ -346,3 +346,25 @@
 2026-09-30 09:03:51.469: [INFO] BookmarksSnapshot Startup total=30 bar=29 other=2 mobile=0 showBar=1 showBarNTP=0
 2026-09-30 09:04:02.706: [INFO] Sync initialization duration: 1634ms
 2026-09-30 09:09:03.049: [INFO] BookmarksSnapshot Shutdown total=30 bar=29 other=2 mobile=0 showBar=1 showBarNTP=0
+2026-10-02 17:00:50.624: [INFO] CurrentProfilePath: C:\Users\rjxas\AppData\Local\Temp\flutter_tools.6bc8c249\flutter_tools_chrome_device.178767f8\Default
+2026-10-02 17:00:50.624: [INFO] Profiles total count: 1
+2026-10-02 17:00:50.624: [INFO] Profile: name=Profile 1 path=C:\Users\rjxas\AppData\Local\Temp\flutter_tools.6bc8c249\flutter_tools_chrome_device.178767f8\Default lastActive=2026-10-02T17:00:50.545Z
+2026-10-02 17:00:50.624: [INFO] LastUsedProfileDir: C:\Users\rjxas\AppData\Local\Temp\flutter_tools.6bc8c249\flutter_tools_chrome_device.178767f8\Default
+2026-10-02 17:00:50.624: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\rjxas\AppData\Local\Temp\flutter_tools.6bc8c249\flutter_tools_chrome_device.178767f8\Default lastActive=2026-10-02T17:00:50.545Z
+2026-10-02 17:00:50.624: [INFO] OnDoneLoading sync enabled: 0
+2026-10-02 17:00:50.624: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-10-02 17:00:50.624: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-10-02 17:00:50.624: [INFO] BookmarksSnapshot Startup total=31 bar=30 other=2 mobile=0 showBar=1 showBarNTP=0
+2026-10-02 17:00:53.046: [INFO] Primary account changed.
+2026-10-02 17:00:53.046: [INFO] OnPrimaryAccountChanged PrimaryAccountChangeEvent::Type::kSet
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:58.593: [INFO] BookmarkNodeMoved
+2026-10-02 17:00:59.100: [INFO] Sync initialization duration: 8473ms
+2026-10-02 17:03:32.347: [INFO] BookmarksSnapshot Shutdown total=31 bar=30 other=2 mobile=0 showBar=1 showBarNTP=0

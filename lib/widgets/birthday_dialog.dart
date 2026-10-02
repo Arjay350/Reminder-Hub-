@@ -7,9 +7,10 @@ import '../services/hive_service.dart';
 import '../services/notification_service.dart';
 
 class BirthdayDialog extends StatefulWidget {
-  const BirthdayDialog({super.key, this.birthday});
+  const BirthdayDialog({super.key, this.birthday, this.initialDate});
 
   final Birthday? birthday;
+  final DateTime? initialDate;
 
   @override
   State<BirthdayDialog> createState() => _BirthdayDialogState();
@@ -40,6 +41,7 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
     _isUserBirthday = current?.isUserBirthday ?? false;
     _birthDate =
         current?.birthDate ??
+        widget.initialDate ??
         DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
     _remind7DaysBefore = current?.remind7DaysBefore ?? true;
     _remind1DayBefore = current?.remind1DayBefore ?? true;
@@ -66,18 +68,17 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
     final isDark = theme.brightness == Brightness.dark;
     final isEditing = widget.birthday != null;
 
-    return Container(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        top: 24,
-        left: 24,
-        right: 24,
-      ),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+    return Material(
+      color: theme.scaffoldBackgroundColor,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          top: 24,
+          left: 24,
+          right: 24,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -122,8 +123,7 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
                   'Only one birthday can be marked as yours.',
                 ),
                 value: _isUserBirthday,
-                onChanged: (value) =>
-                    setState(() => _isUserBirthday = value ?? false),
+                onChanged: _setUserBirthday,
               ),
               const SizedBox(height: 8),
               Text(
@@ -320,6 +320,49 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
     }
   }
 
+  Future<void> _setUserBirthday(bool? value) async {
+    final shouldBeUserBirthday = value ?? false;
+    if (!shouldBeUserBirthday) {
+      setState(() => _isUserBirthday = false);
+      return;
+    }
+
+    final existing = Birthday.findUserBirthday(
+      HiveService.instance.getBirthdays(),
+    );
+    if (existing != null && existing.id != widget.birthday?.id) {
+      final shouldEdit = await _askToEditExistingBirthday();
+      if (!mounted) return;
+      if (shouldEdit) Navigator.pop(context, existing);
+      return;
+    }
+
+    setState(() => _isUserBirthday = true);
+  }
+
+  Future<bool> _askToEditExistingBirthday() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Birthday already saved'),
+        content: const Text(
+          'You already have a birthday saved. Would you like to edit it?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Edit Birthday'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -332,6 +375,17 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
 
   Future<void> _saveBirthday() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final existingUserBirthday = _isUserBirthday
+        ? Birthday.findUserBirthday(HiveService.instance.getBirthdays())
+        : null;
+    if (existingUserBirthday != null &&
+        existingUserBirthday.id != widget.birthday?.id) {
+      if (await _askToEditExistingBirthday() && mounted) {
+        Navigator.pop(context, existingUserBirthday);
+      }
+      return;
+    }
 
     final name = _nameController.text.trim();
     final finalBirthDate = _yearKnown
@@ -372,9 +426,9 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Birthday?'),
-        content: Text(
-          'Are you sure you want to remove ${birthday.name}\'s birthday?\nAll scheduled birthday notifications will also be cancelled.',
+        title: const Text('Delete this birthday?'),
+        content: const Text(
+          'This birthday will be removed from your Birthday Tracker.',
         ),
         actions: [
           TextButton(

@@ -41,8 +41,6 @@ class AppConstants {
       'Notifications for reminders, bills, and gas refills';
 
   static const List<String> reminderCategories = [
-    'Bills',
-    'AI Reset',
     'Subscriptions',
     'Gaming',
     'Work',
@@ -114,18 +112,6 @@ class CategoryConfig {
   });
 
   static const Map<String, CategoryConfig> reminderCategories = {
-    'Bills': CategoryConfig(
-      name: 'Bills',
-      icon: Icons.receipt_long,
-      color: AppConstants.accentOrange,
-      lightColor: Color(0xFFFFEDD5),
-    ),
-    'AI Reset': CategoryConfig(
-      name: 'AI Reset',
-      icon: Icons.smart_toy,
-      color: AppConstants.accentPurple,
-      lightColor: Color(0xFFF3E8FF),
-    ),
     'Subscriptions': CategoryConfig(
       name: 'Subscriptions',
       icon: Icons.subscriptions,

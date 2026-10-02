@@ -46,6 +46,9 @@ class PetService {
       ValueNotifier<double>(0.0);
   final ValueNotifier<int> effectTriggerNotifier = ValueNotifier<int>(0);
   final ValueNotifier<bool> hasBackpackNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> hasBirthdayTodayNotifier = ValueNotifier<bool>(
+    false,
+  );
 
   Timer? _idleTimer;
   Timer? _speechClearTimer;
@@ -347,39 +350,99 @@ class PetService {
       'bills_check',
       'bills_paid',
       'bills_early',
+      'pet_attention',
     };
 
     final hasLegacyTasks = prefs.dailyTasks.any(
       (t) => !validTaskIds.contains(t.id),
     );
 
-    if (prefs.lastTaskGenerationDate != todayKey ||
+    final isSameDay = prefs.lastTaskGenerationDate == todayKey;
+    if (!isSameDay ||
         prefs.dailyTasks.isEmpty ||
+        prefs.dailyTasks.length != 3 ||
         hasLegacyTasks) {
-      final defaultTasks = _generateDailyTasks();
+      final preserveToday =
+          isSameDay && !hasLegacyTasks && prefs.dailyTasks.isNotEmpty;
+      final completedUnclaimed = preserveToday
+          ? prefs.dailyTasks
+                .where((task) => task.isCompleted && !task.isClaimed)
+                .toList()
+          : <PetDailyTask>[];
+      final selectedTasks = <PetDailyTask>[...completedUnclaimed.take(3)];
+      final previousTasks = {
+        for (final task in prefs.dailyTasks) task.id: task,
+      };
+      for (final candidate in _generateDailyTasks(currentTime: now)) {
+        if (selectedTasks.length >= 3) break;
+        if (selectedTasks.any((task) => task.id == candidate.id)) continue;
+        final previous = previousTasks[candidate.id];
+        selectedTasks.add(
+          candidate.copyWith(
+            currentCount: previous?.currentCount ?? candidate.currentCount,
+            isClaimed:
+                previous?.isClaimed ??
+                prefs.claimedDailyRewards.contains(candidate.id),
+          ),
+        );
+      }
+
+      final selectedIds = selectedTasks.map((task) => task.id).toSet();
+      final claimedRewards = preserveToday
+          ? List<String>.from(prefs.claimedDailyRewards)
+          : hasLegacyTasks && isSameDay
+          ? prefs.claimedDailyRewards.where(validTaskIds.contains).toList()
+          : <String>[];
+      var foodFromMigratedCompletions = 0;
+      for (final task in completedUnclaimed.skip(3)) {
+        if (!claimedRewards.contains(task.id)) {
+          claimedRewards.add(task.id);
+          foodFromMigratedCompletions += task.foodReward;
+        }
+      }
+
+      final completionState = <String, int>{
+        for (final entry in prefs.dailyTaskCompletionState.entries)
+          if (selectedIds.contains(entry.key)) entry.key: entry.value,
+      };
+      for (final task in selectedTasks) {
+        if (task.currentCount > 0) {
+          completionState[task.id] = task.currentCount;
+        }
+      }
+
       _updatePreferences(
         prefs.copyWith(
           lastTaskGenerationDate: todayKey,
-          dailyTasks: defaultTasks,
-          dailyTaskCompletionState:
-              hasLegacyTasks && prefs.lastTaskGenerationDate == todayKey
-              ? Map.fromEntries(
-                  prefs.dailyTaskCompletionState.entries.where(
-                    (e) => validTaskIds.contains(e.key),
-                  ),
-                )
-              : {},
-          claimedDailyRewards:
-              hasLegacyTasks && prefs.lastTaskGenerationDate == todayKey
-              ? prefs.claimedDailyRewards.where(validTaskIds.contains).toList()
-              : [],
+          dailyTasks: selectedTasks,
+          dailyTaskCompletionState: completionState,
+          claimedDailyRewards: claimedRewards,
+          foodInventory: prefs.foodInventory + foodFromMigratedCompletions,
         ),
       );
     }
   }
 
-  List<PetDailyTask> _generateDailyTasks() {
-    return const [
+  List<PetDailyTask> _generateDailyTasks({DateTime? currentTime}) {
+    final now = currentTime ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final classes = _hive.getSchoolClasses();
+    final hasClassesToday = classes.any(
+      (item) => item.occursOnDay(now.weekday),
+    );
+    final bills = _hive.getBills();
+    final hasBills = bills.isNotEmpty;
+    final hasUnpaidBills = bills.any((bill) => !bill.paid);
+    final hasUpcomingUnpaidBills = bills.any((bill) {
+      final dueDate = DateTime(
+        bill.dueDate.year,
+        bill.dueDate.month,
+        bill.dueDate.day,
+      );
+      return !bill.paid && dueDate.isAfter(today);
+    });
+
+    final tasks = <PetDailyTask>[
       // School
       PetDailyTask(
         id: 'school_schedule',
@@ -439,82 +502,45 @@ class PetService {
         foodReward: 3,
         requiredCount: 1,
       ),
+      PetDailyTask(
+        id: 'pet_attention',
+        title: 'Give your Kitty some attention',
+        category: 'Pet',
+        foodReward: 1,
+        requiredCount: 1,
+      ),
     ];
-  }
 
-  /// Returns ~3 relevant daily tasks based on current ReminderHub data.
-  /// Filters out tasks that are impossible or irrelevant for the user.
-  List<PetDailyTask> getRelevantDailyTasks([PetPreferences? currentPrefs]) {
-    final prefs = currentPrefs ?? preferences;
-    final allTasks = prefs.dailyTasks;
-    if (allTasks.isEmpty) return const [];
-
-    final now = DateTime.now();
-    final todayWeekday = now.weekday;
-
-    // Check school relevance
-    List<SchoolClass> classes = [];
-    try {
-      classes = _hive.getSchoolClasses();
-    } catch (_) {}
-    final hasClasses = classes.isNotEmpty;
-    final hasClassesToday = classes.any((c) => c.occursOnDay(todayWeekday));
-
-    // Check bills relevance
-    List<Bill> bills = [];
-    try {
-      bills = _hive.getBills();
-    } catch (_) {}
-    final hasBills = bills.isNotEmpty;
-    final hasUnpaidBills = bills.any((b) => !b.paid);
-    final hasUpcomingUnpaidBills = bills.any(
-      (b) => !b.paid && b.dueDate.isAfter(now),
-    );
-
-    // Filter relevant tasks
-    final relevant = allTasks.where((task) {
+    final availableTasks = tasks.where((task) {
       switch (task.id) {
         case 'school_schedule':
-          return hasClasses || task.isCompleted;
-        case 'school_class':
-          return hasClassesToday || task.isCompleted;
-        case 'school_all':
-          return hasClassesToday || task.isCompleted;
         case 'study_25':
         case 'study_2_sessions':
-          return true; // Study timer is always available
+        case 'pet_attention':
+          return true;
+        case 'school_class':
+        case 'school_all':
+          return hasClassesToday;
         case 'bills_check':
-          return hasBills || task.isCompleted;
+          return hasBills;
         case 'bills_paid':
-          return hasUnpaidBills || task.isCompleted;
+          return hasUnpaidBills;
         case 'bills_early':
-          return hasUpcomingUnpaidBills || task.isCompleted;
+          return hasUpcomingUnpaidBills;
         default:
           return false;
       }
     }).toList();
 
-    // Fallback if no specific data exists yet
-    if (relevant.isEmpty) {
-      return allTasks
-          .where((t) => t.category == 'Study' || t.id == 'bills_check')
-          .take(3)
-          .toList();
-    }
+    final dailySeed = now.year * 10000 + now.month * 100 + now.day;
+    availableTasks.shuffle(Random(dailySeed));
+    return availableTasks.take(3).toList();
+  }
 
-    // Sort: Incomplete tasks first, then completed-unclaimed, then claimed
-    relevant.sort((a, b) {
-      int score(PetDailyTask t) {
-        if (!t.isCompleted) return 0;
-        if (!t.isClaimed) return 1;
-        return 2;
-      }
-
-      return score(a).compareTo(score(b));
-    });
-
-    // Return approximately 3 relevant tasks (e.g. up to 3)
-    return relevant.take(3).toList();
+  /// Returns the three tasks selected and saved for the current day.
+  List<PetDailyTask> getRelevantDailyTasks([PetPreferences? currentPrefs]) {
+    final prefs = currentPrefs ?? preferences;
+    return prefs.dailyTasks.take(3).toList();
   }
 
   /// Increments or sets progress on a specific daily task.
@@ -525,6 +551,7 @@ class PetService {
   }) async {
     checkDailyTaskReset();
     final prefs = preferences;
+    if (!prefs.dailyTasks.any((task) => task.id == taskId)) return;
     final completionMap = Map<String, int>.from(prefs.dailyTaskCompletionState);
 
     final currentVal = completionMap[taskId] ?? 0;
@@ -842,6 +869,7 @@ class PetService {
 
   void onTap() {
     if (!isEnabled) return;
+    recordTaskProgress('pet_attention', count: 1, setDirect: true);
     _lastInteractionTime = DateTime.now();
 
     if (currentState == PetState.sleeping) {
@@ -888,6 +916,7 @@ class PetService {
 
   void onPetSwipe() {
     if (!isEnabled) return;
+    recordTaskProgress('pet_attention', count: 1, setDirect: true);
     _lastInteractionTime = DateTime.now();
 
     stateNotifier.value = PetState.beingPetted;
@@ -1007,7 +1036,7 @@ class PetService {
     _scheduleReturnToIdle(delay: const Duration(milliseconds: 2500));
   }
 
-  void onBillPaid(Bill bill) {
+  void onBillPaid(Bill bill, {bool? paidBeforeDueDate}) {
     if (!isEnabled) return;
 
     if (_recentlyPaidBillIds.contains(bill.id)) {
@@ -1034,11 +1063,20 @@ class PetService {
 
     // Productivity tasks tracking
     recordTaskProgress('bills_paid', count: 1);
-    if (bill.dueDate.isAfter(DateTime.now())) {
+    if (paidBeforeDueDate ?? _isDueDateAfterToday(bill.dueDate)) {
       recordTaskProgress('bills_early', count: 1);
     }
 
     _scheduleReturnToIdle(delay: const Duration(milliseconds: 2800));
+  }
+
+  bool _isDueDateAfterToday(DateTime dueDate) {
+    final today = DateTime.now();
+    return DateTime(
+      dueDate.year,
+      dueDate.month,
+      dueDate.day,
+    ).isAfter(DateTime(today.year, today.month, today.day));
   }
 
   void onBillApproachingDue(Bill bill) {
@@ -1114,7 +1152,6 @@ class PetService {
           'Class finished! Great job!',
           duration: const Duration(seconds: 3),
         );
-        recordTaskProgress('school_class', count: 1);
       }
     }
   }
@@ -1245,14 +1282,28 @@ class PetService {
     return false;
   }
 
+  void refreshBirthdayAppearance({
+    List<Birthday>? birthdays,
+    DateTime? currentTime,
+  }) {
+    final referenceDate = currentTime ?? DateTime.now();
+    final birthdayList = birthdays ?? _hive.getBirthdays();
+    hasBirthdayTodayNotifier.value = birthdayList.any(
+      (birthday) => birthday.daysUntilNextFor(referenceDate) == 0,
+    );
+  }
+
   void checkUpcomingEvents({
     List<Reminder>? reminders,
     List<Bill>? bills,
     List<SchoolClass>? schoolClasses,
     List<Birthday>? birthdays,
+    DateTime? currentTime,
   }) {
     if (!isEnabled) return;
-    final now = DateTime.now();
+    final now = currentTime ?? DateTime.now();
+    checkDailyTaskReset(currentTime: now);
+    refreshBirthdayAppearance(birthdays: birthdays, currentTime: now);
 
     // Check school classes timetable status proactively so backpack & study notebook activate
     try {
@@ -1262,6 +1313,14 @@ class PetService {
             .calculateDayStatus(classes, now);
         final hasActive = dayStatus.currentClasses.isNotEmpty;
         final hasNext = dayStatus.nextClass != null;
+        if (dayStatus.classes.any(
+          (classStatus) => classStatus.status == ClassState.completed,
+        )) {
+          recordTaskProgress('school_class', count: 1, setDirect: true);
+        }
+        if (dayStatus.classes.isNotEmpty && dayStatus.hasNoMoreClasses) {
+          recordTaskProgress('school_all', count: 1, setDirect: true);
+        }
         final currentName =
             dayStatus.currentClasses.firstOrNull?.schoolClass.subject;
         final nextName = dayStatus.nextClass?.schoolClass.subject;

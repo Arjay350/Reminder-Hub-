@@ -181,7 +181,9 @@ void main() {
     testWidgets('PasswordTextField toggles visibility correctly', (
       tester,
     ) async {
-      const MethodChannel authChannel = MethodChannel('plugins.flutter.io/local_auth');
+      const MethodChannel authChannel = MethodChannel(
+        'plugins.flutter.io/local_auth',
+      );
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         authChannel,
         (call) async {
@@ -603,24 +605,24 @@ void main() {
   });
 
   group('AIAccountDialog Widget Tests', () {
-    testWidgets('defaults to Gemini when initialService is Gemini', (tester) async {
+    testWidgets('defaults to Gemini when initialService is Gemini', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: AIAccountDialog(initialService: 'Gemini'),
-          ),
+          home: Scaffold(body: AIAccountDialog(initialService: 'Gemini')),
         ),
       );
 
       expect(find.text('Gemini'), findsWidgets);
     });
 
-    testWidgets('defaults to ChatGPT when initialService is null or All', (tester) async {
+    testWidgets('defaults to ChatGPT when initialService is null or All', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: AIAccountDialog(initialService: 'All'),
-          ),
+          home: Scaffold(body: AIAccountDialog(initialService: 'All')),
         ),
       );
 
@@ -657,18 +659,78 @@ void main() {
   });
 
   group('AIAccountsScreen Search & Status Tests', () {
-    testWidgets('renders search bar and status categories (All, Active, Cooldown)', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: AIAccountsScreen(),
-        ),
-      );
-      await tester.pumpAndSettle();
+    test(
+      'provider filter scopes status counts and All includes every provider',
+      () {
+        final now = DateTime.now();
+        final accounts = [
+          AIAccount(
+            id: 'gemini-active',
+            service: 'Gemini',
+            accountName: 'Personal',
+            email: 'gemini@example.com',
+            username: '',
+            password: '',
+            plan: 'Free',
+            resetDate: now.subtract(const Duration(days: 1)),
+            notes: '',
+          ),
+          AIAccount(
+            id: 'chatgpt-cooldown',
+            service: 'ChatGPT',
+            accountName: 'Personal',
+            email: 'chatgpt@example.com',
+            username: '',
+            password: '',
+            plan: 'Plus',
+            resetDate: now.add(const Duration(days: 1)),
+            notes: '',
+          ),
+        ];
 
-      expect(find.byType(TextField), findsOneWidget);
-      expect(find.textContaining('Search AI accounts'), findsOneWidget);
-      expect(find.textContaining('Active ('), findsOneWidget);
-      expect(find.textContaining('Cooldown ('), findsOneWidget);
-    });
+        final geminiAccounts = filterAIAccountsByService(accounts, 'Gemini');
+        final allAccounts = filterAIAccountsByService(accounts, 'All');
+
+        expect(geminiAccounts.map((account) => account.id), ['gemini-active']);
+        expect(
+          geminiAccounts.where(
+            (account) => account.currentResetStatus == 'Active',
+          ),
+          hasLength(1),
+        );
+        expect(
+          geminiAccounts.where(
+            (account) => account.currentResetStatus == 'Cooldown',
+          ),
+          isEmpty,
+        );
+        expect(allAccounts, hasLength(2));
+        expect(
+          allAccounts.where(
+            (account) => account.currentResetStatus == 'Active',
+          ),
+          hasLength(1),
+        );
+        expect(
+          allAccounts.where(
+            (account) => account.currentResetStatus == 'Cooldown',
+          ),
+          hasLength(1),
+        );
+      },
+    );
+
+    testWidgets(
+      'renders search bar and status categories (All, Active, Cooldown)',
+      (tester) async {
+        await tester.pumpWidget(const MaterialApp(home: AIAccountsScreen()));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.textContaining('Search AI accounts'), findsOneWidget);
+        expect(find.textContaining('Active ('), findsOneWidget);
+        expect(find.textContaining('Cooldown ('), findsOneWidget);
+      },
+    );
   });
 }

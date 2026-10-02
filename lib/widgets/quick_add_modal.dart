@@ -5,7 +5,6 @@ import 'ai_account_dialog.dart';
 import 'user_account_dialog.dart';
 import 'gas_purchase_dialog.dart';
 import 'school_class_dialog.dart';
-import 'birthday_dialog.dart';
 
 class QuickAddModal extends StatelessWidget {
   const QuickAddModal({super.key});
@@ -58,7 +57,6 @@ class QuickAddModal extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
           _quickOption(
             context,
             title: 'Add Reminder',
@@ -146,23 +144,6 @@ class QuickAddModal extends StatelessWidget {
           const SizedBox(height: 12),
           _quickOption(
             context,
-            title: 'Add Birthday',
-            subtitle: 'Friends, family, milestones, and gift ideas',
-            icon: Icons.cake_rounded,
-            color: const Color(0xFFF472B6),
-            onTap: () {
-              Navigator.pop(context);
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => const BirthdayDialog(),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          _quickOption(
-            context,
             title: 'Add LPG Order',
             subtitle: 'Record LPG/Gas refill & estimate empty date',
             icon: Icons.propane_tank_rounded,
@@ -201,29 +182,36 @@ class QuickAddModal extends StatelessWidget {
           width: 1.2,
         ),
       ),
-      child: ListTile(
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: onTap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-          child: Icon(icon, color: color, size: 22),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        trailing: const Icon(
-          Icons.chevron_right_rounded,
-          size: 20,
-          color: Colors.grey,
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          trailing: const Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: Colors.grey,
+          ),
         ),
       ),
     );

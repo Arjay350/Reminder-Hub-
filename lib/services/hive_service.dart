@@ -10,7 +10,7 @@ class HiveService {
   HiveService._internal();
 
   // Data version for migrations
-  static const int currentDataVersion = 7;
+  static const int currentDataVersion = 8;
 
   Box<String>? _remindersBox;
   Box<String>? _schoolClassesBox;
@@ -120,6 +120,23 @@ class HiveService {
         await savePetPreferences(updated);
       }
     }
+    if (fromVersion < 8) {
+      await _migrateDuplicateUserBirthdays();
+    }
+  }
+
+  Future<void> _migrateDuplicateUserBirthdays() async {
+    final birthdays = getBirthdays();
+    final normalized = Birthday.keepSingleUserBirthday(birthdays);
+    if (normalized.length == birthdays.length) return;
+
+    final retainedIds = normalized.map((birthday) => birthday.id).toSet();
+    for (final birthday in birthdays) {
+      if (birthday.isUserBirthday && !retainedIds.contains(birthday.id)) {
+        await _birthdaysBox!.delete(birthday.id);
+      }
+    }
+    await _birthdaysBox!.flush();
   }
 
   Future<void> ensureInitialized() async {
