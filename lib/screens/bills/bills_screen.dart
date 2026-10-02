@@ -565,6 +565,15 @@ class _BillsScreenState extends State<BillsScreen> {
     );
   }
 
+  bool _wasPaidBeforeDueDate(Bill bill) {
+    final now = DateTime.now();
+    return DateTime(
+      bill.dueDate.year,
+      bill.dueDate.month,
+      bill.dueDate.day,
+    ).isAfter(DateTime(now.year, now.month, now.day));
+  }
+
   Future<void> _togglePaidStatus(Bill bill) async {
     // Toggling OFF (currently paid non-recurring bill -> unmark paid)
     if (bill.paid) {
@@ -583,7 +592,10 @@ class _BillsScreenState extends State<BillsScreen> {
     if (!bill.isRecurring) {
       final updated = bill.copyWith(paid: true);
       await _hive.saveBill(updated);
-      PetService.instance.onBillPaid(updated);
+      PetService.instance.onBillPaid(
+        updated,
+        paidBeforeDueDate: _wasPaidBeforeDueDate(bill),
+      );
       await NotificationService.instance.cancelNotificationForId(bill.id);
       try {
         await WidgetService.instance.updateBillsWidget();
@@ -621,7 +633,10 @@ class _BillsScreenState extends State<BillsScreen> {
 
     // Step 4: Persist updated bill to Hive
     await _hive.saveBill(updated);
-    PetService.instance.onBillPaid(updated);
+    PetService.instance.onBillPaid(
+      updated,
+      paidBeforeDueDate: _wasPaidBeforeDueDate(bill),
+    );
 
     // Step 5: Cancel old notification and schedule notification for new occurrence
     await NotificationService.instance.cancelNotificationForId(bill.id);

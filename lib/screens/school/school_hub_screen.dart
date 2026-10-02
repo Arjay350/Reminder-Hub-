@@ -59,13 +59,6 @@ class _SchoolHubScreenState extends State<SchoolHubScreen> {
 
     PetService.instance.onScheduleChecked();
     PetService.instance.checkUpcomingEvents(schoolClasses: _classes);
-    final today = _today;
-    if (today != null &&
-        today.classes.isNotEmpty &&
-        today.currentClasses.isEmpty &&
-        today.nextClass == null) {
-      PetService.instance.recordTaskProgress('school_all', count: 1, setDirect: true);
-    }
   }
 
   Future<void> _openSchedule() async {

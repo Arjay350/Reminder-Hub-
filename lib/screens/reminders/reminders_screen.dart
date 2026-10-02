@@ -7,14 +7,13 @@ import '../../services/notification_service.dart';
 import '../../services/widget_service.dart';
 import '../../services/pet_service.dart';
 import '../../widgets/ai_account_dialog.dart';
-import '../../widgets/bill_dialog.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/reminder_dialog.dart';
 import '../../widgets/school_class_dialog.dart';
 
-enum ReminderSourceType { general, bill, aiReset, aiSubscription, schoolClass }
+enum ReminderSourceType { general, aiSubscription, schoolClass }
 
 class UnifiedReminderEntry {
   UnifiedReminderEntry({
@@ -64,8 +63,6 @@ class _RemindersScreenState extends State<RemindersScreen>
 
   final List<String> _categories = [
     'All',
-    'Bills',
-    'AI Reset',
     'School',
     'Subscriptions',
     'Gaming',
@@ -122,7 +119,6 @@ class _RemindersScreenState extends State<RemindersScreen>
     if (!mounted) return;
 
     final reminders = _hive.getReminders();
-    final bills = _hive.getBills();
     final aiAccounts = _hive.getAIAccounts();
     final schoolClasses = _hive.getSchoolClasses();
     final now = DateTime.now();
@@ -150,88 +146,7 @@ class _RemindersScreenState extends State<RemindersScreen>
       );
     }
 
-    // 2. Connected Bills (Dynamic aggregation from Bills Tracker)
-    for (final b in bills) {
-      final repeatLabel = b.repeat == 'None' || b.repeat.isEmpty
-          ? 'One-time'
-          : '${b.repeat} recurring';
-      final statusLabel = b.statusLabel;
-
-      entries.add(
-        UnifiedReminderEntry(
-          id: b.id,
-          title: 'Bill: ${b.name}',
-          category: 'Bills',
-          subtitle:
-              '${Formatters.formatCurrency(b.amount)} • Due ${Formatters.formatDate(b.dueDate)} • $repeatLabel • $statusLabel',
-          date: b.dueDate,
-          time: '09:00 AM',
-          priority: b.isOverdue ? 'High' : (b.paid ? 'Low' : 'Medium'),
-          isCompleted: b.paid,
-          categoryColor: const Color(0xFF10B981),
-          categoryIcon: Icons.receipt_long,
-          sourceType: ReminderSourceType.bill,
-          originalObject: b,
-        ),
-      );
-    }
-
-    // 3. Connected AI Resets (Dynamic aggregation from AI Accounts)
-    for (final a in aiAccounts) {
-      final sched = a.resetSchedule.trim().toLowerCase();
-      DateTime targetDate = a.resetDate;
-      String subtitle;
-      if (sched == 'daily') {
-        final resetToday = _parseEntryDateTime(now, a.resetTime);
-        targetDate = resetToday.isBefore(now)
-            ? DateTime(now.year, now.month, now.day + 1)
-            : DateTime(now.year, now.month, now.day);
-        subtitle =
-            '${a.accountName} (${a.plan}) • Usage reset daily at ${a.resetTime}';
-      } else if (sched == 'weekly') {
-        int diff = a.resetDate.weekday - now.weekday;
-        if (diff < 0) diff += 7;
-        if (diff == 0) {
-          final resetToday = _parseEntryDateTime(now, a.resetTime);
-          if (resetToday.isBefore(now)) diff = 7;
-        }
-        targetDate = DateTime(now.year, now.month, now.day + diff);
-        subtitle =
-            '${a.accountName} (${a.plan}) • Usage reset weekly at ${a.resetTime}';
-      } else if (sched == 'monthly') {
-        DateTime candidate = DateTime(now.year, now.month, a.resetDate.day);
-        final resetCandidate = _parseEntryDateTime(candidate, a.resetTime);
-        if (resetCandidate.isBefore(now)) {
-          candidate = DateTime(now.year, now.month + 1, a.resetDate.day);
-        }
-        targetDate = candidate;
-        subtitle =
-            '${a.accountName} (${a.plan}) • Usage reset monthly at ${a.resetTime}';
-      } else {
-        targetDate = a.resetDate;
-        subtitle =
-            '${a.accountName} (${a.plan}) • Usage reset on ${Formatters.formatShortDate(a.resetDate)} at ${a.resetTime}';
-      }
-
-      entries.add(
-        UnifiedReminderEntry(
-          id: 'ai_reset_${a.id}',
-          title: 'AI Reset: ${a.service}',
-          category: 'AI Reset',
-          subtitle: subtitle,
-          date: targetDate,
-          time: a.resetTime,
-          priority: 'Medium',
-          isCompleted: false,
-          categoryColor: a.serviceColor,
-          categoryIcon: Icons.smart_toy,
-          sourceType: ReminderSourceType.aiReset,
-          originalObject: a,
-        ),
-      );
-    }
-
-    // 4. Connected AI Subscription Renewals (for Paid plans only)
+    // 2. Connected AI Subscription Renewals (for Paid plans only)
     for (final a in aiAccounts) {
       if (!a.isFreePlan) {
         entries.add(
@@ -254,7 +169,7 @@ class _RemindersScreenState extends State<RemindersScreen>
       }
     }
 
-    // 5. Connected School Classes (Next recurring occurrence)
+    // 3. Connected School Classes (Next recurring occurrence)
     for (final c in schoolClasses) {
       if (c.daysOfWeek.isEmpty) continue;
       int? minDaysAhead;
@@ -420,7 +335,7 @@ class _RemindersScreenState extends State<RemindersScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search tasks, bills, AI resets, school...',
+                  hintText: 'Search tasks, school, subscriptions...',
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
                   fillColor: isDark
@@ -633,10 +548,7 @@ class _RemindersScreenState extends State<RemindersScreen>
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             if (e.sourceType ==
-                                                    ReminderSourceType
-                                                        .general ||
-                                                e.sourceType ==
-                                                    ReminderSourceType.bill)
+                                                ReminderSourceType.general)
                                               Transform.scale(
                                                 scale: 0.9,
                                                 child: Checkbox(
@@ -709,89 +621,6 @@ class _RemindersScreenState extends State<RemindersScreen>
     );
   }
 
-  /// Shows the recurring-payment confirmation dialog.
-  /// Returns true when the user confirms, false on cancel.
-  Future<bool> _showRecurringPayConfirmation(
-    Bill bill,
-    DateTime currentDate,
-    DateTime nextDate,
-  ) async {
-    final currentDateStr = Formatters.formatDate(currentDate);
-    final nextDateStr = Formatters.formatDate(nextDate);
-    final settings = HiveService.instance.getSettings();
-    final currency = settings.currency;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Mark Bill as Paid?',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              bill.name,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$currency${bill.amount.toStringAsFixed(2)} • Due $currentDateStr',
-              style: const TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'After marking as paid:',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            _confirmBullet(
-              '$currentDateStr will be recorded in payment history',
-            ),
-            _confirmBullet('The next bill will be due $nextDateStr'),
-            _confirmBullet('The new $nextDateStr bill will be marked UNPAID'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade600,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Mark as Paid'),
-          ),
-        ],
-      ),
-    );
-    return result ?? false;
-  }
-
-  Widget _confirmBullet(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-
   Future<void> _toggleCompletion(
     UnifiedReminderEntry entry,
     bool completed,
@@ -861,78 +690,6 @@ class _RemindersScreenState extends State<RemindersScreen>
       await _loadReminders();
       return;
     }
-
-    if (entry.sourceType == ReminderSourceType.bill) {
-      final bill = entry.originalObject as Bill;
-
-      // ── Toggling OFF (currently paid non-recurring bill → mark unpaid) ───
-      if (!completed) {
-        if (bill.paid) {
-          final updated = bill.copyWith(paid: false);
-          await _hive.saveBill(updated);
-          await NotificationService.instance.scheduleBillNotification(updated);
-          try {
-            await WidgetService.instance.updateBillsWidget();
-          } catch (_) {}
-          await _loadReminders();
-        }
-        return;
-      }
-
-      // ── Toggling ON (marking as paid) — non-recurring ─────────────────
-      if (!bill.isRecurring) {
-        final updated = bill.copyWith(paid: true);
-        await _hive.saveBill(updated);
-        PetService.instance.onBillPaid(updated);
-        await NotificationService.instance.cancelNotificationForId(bill.id);
-        try {
-          await WidgetService.instance.updateBillsWidget();
-        } catch (_) {}
-        await _loadReminders();
-        return;
-      }
-
-      // ── Recurring bill: record payment for current occurrence ──────────
-      final nextDate = bill.getNextOccurrence(bill.dueDate);
-
-      // Show confirmation dialog before committing the recurring payment.
-      if (!mounted) return;
-      final confirmed = await _showRecurringPayConfirmation(
-        bill,
-        bill.dueDate,
-        nextDate,
-      );
-      if (!confirmed || !mounted) return;
-
-      // Step 1: Record completed occurrence in payment history.
-      final payment = BillPayment(
-        occurrenceDate: bill.dueDate,
-        paidDate: DateTime.now(),
-        amount: bill.amount,
-      );
-      final newHistory = [...bill.paymentHistory, payment];
-
-      // Step 2 & 3: Advance dueDate to next occurrence and reset paid to false.
-      final updated = bill.copyWith(
-        dueDate: nextDate,
-        paid: false,
-        paymentHistory: newHistory,
-      );
-
-      // Step 4: Save to Hive
-      await _hive.saveBill(updated);
-      PetService.instance.onBillPaid(updated);
-
-      // Step 5: Cancel old notification and schedule for the next due date
-      await NotificationService.instance.cancelNotificationForId(bill.id);
-      await NotificationService.instance.scheduleBillNotification(updated);
-
-      // Step 6: Update widgets and reload
-      try {
-        await WidgetService.instance.updateBillsWidget();
-      } catch (_) {}
-      _loadReminders();
-    }
   }
 
   Future<void> _deleteEntry(UnifiedReminderEntry entry) async {
@@ -942,18 +699,6 @@ class _RemindersScreenState extends State<RemindersScreen>
         await NotificationService.instance.cancelNotificationForId(r.id);
         await _hive.deleteReminder(r.id);
         break;
-      case ReminderSourceType.bill:
-        final b = entry.originalObject as Bill;
-        await NotificationService.instance.cancelNotificationForId(b.id);
-        await _hive.deleteBill(b.id);
-        // Update Bills widget
-        try {
-          await WidgetService.instance.updateBillsWidget();
-        } catch (e) {
-          debugPrint('WidgetService.updateBillsWidget error: $e');
-        }
-        break;
-      case ReminderSourceType.aiReset:
       case ReminderSourceType.aiSubscription:
         final a = entry.originalObject as AIAccount;
         await NotificationService.instance.cancelNotificationForId(a.id);
@@ -991,15 +736,6 @@ class _RemindersScreenState extends State<RemindersScreen>
               ReminderDialog(reminder: entry.originalObject as Reminder),
         );
         break;
-      case ReminderSourceType.bill:
-        result = await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => BillDialog(bill: entry.originalObject as Bill),
-        );
-        break;
-      case ReminderSourceType.aiReset:
       case ReminderSourceType.aiSubscription:
         result = await showModalBottomSheet(
           context: context,

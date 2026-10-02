@@ -1,6 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reminder_hub/models/app_models.dart';
 import 'package:reminder_hub/services/pet_service.dart';
+import 'package:reminder_hub/widgets/birthday_dialog.dart';
+import 'package:reminder_hub/widgets/quick_add_modal.dart';
 
 void main() {
   group('Birthday model', () {
@@ -49,6 +52,44 @@ void main() {
       expect(decoded.isUserBirthday, isTrue);
       expect(decoded.copyWith(isUserBirthday: false).isUserBirthday, isFalse);
     });
+
+    test(
+      'duplicate personal birthdays are removed without affecting contacts',
+      () {
+        final personal = Birthday(
+          id: 'personal',
+          name: 'Sam',
+          birthDate: DateTime(1993, 5, 18),
+          isUserBirthday: true,
+        );
+        final duplicatePersonal = Birthday(
+          id: 'personal-duplicate',
+          name: 'Sam',
+          birthDate: DateTime(1993, 5, 19),
+          isUserBirthday: true,
+        );
+        final contact = Birthday(
+          id: 'contact',
+          name: 'Mom',
+          birthDate: DateTime(1960, 5, 18),
+        );
+
+        final normalized = Birthday.keepSingleUserBirthday([
+          personal,
+          contact,
+          duplicatePersonal,
+        ]);
+
+        expect(normalized.map((birthday) => birthday.id), [
+          'personal',
+          'contact',
+        ]);
+        expect(
+          normalized.where((birthday) => birthday.isUserBirthday),
+          hasLength(1),
+        );
+      },
+    );
   });
 
   group('Birthday phrase parsing', () {
@@ -72,5 +113,37 @@ void main() {
       expect(otherPerson!.isUserBirthdayMention, isFalse);
       expect(otherPerson.isToday, isTrue);
     });
+  });
+
+  testWidgets('birthday form starts with the selected calendar date', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BirthdayDialog(initialDate: DateTime(2026, 10, 15)),
+        ),
+      ),
+    );
+
+    expect(find.text('October 15, 2026'), findsOneWidget);
+  });
+
+  testWidgets('birthday is not offered in Quick Add', (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: QuickAddModal())),
+    );
+
+    expect(find.text('Add Birthday'), findsNothing);
   });
 }

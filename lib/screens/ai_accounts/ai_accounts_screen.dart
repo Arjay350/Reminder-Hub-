@@ -14,6 +14,19 @@ import '../../widgets/custom_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/password_text_field.dart';
 
+List<AIAccount> filterAIAccountsByService(
+  List<AIAccount> accounts,
+  String selectedService,
+) {
+  if (selectedService == 'All') return accounts;
+  final normalizedService = selectedService.trim().toLowerCase();
+  return accounts
+      .where(
+        (account) => account.service.trim().toLowerCase() == normalizedService,
+      )
+      .toList();
+}
+
 class AIAccountsScreen extends StatefulWidget {
   const AIAccountsScreen({
     super.key,
@@ -83,17 +96,19 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final allCount = _accounts.length;
-    final activeCount =
-        _accounts.where((a) => a.currentResetStatus == 'Active').length;
-    final cooldownCount =
-        _accounts.where((a) => a.currentResetStatus == 'Cooldown').length;
+    final providerAccounts = filterAIAccountsByService(
+      _accounts,
+      _selectedServiceFilter,
+    );
+    final allCount = providerAccounts.length;
+    final activeCount = providerAccounts
+        .where((a) => a.currentResetStatus == 'Active')
+        .length;
+    final cooldownCount = providerAccounts
+        .where((a) => a.currentResetStatus == 'Cooldown')
+        .length;
 
-    final filtered = _accounts.where((a) {
-      if (_selectedServiceFilter != 'All' &&
-          a.service != _selectedServiceFilter) {
-        return false;
-      }
+    final filtered = providerAccounts.where((a) {
       if (_selectedStatusFilter != 'All' &&
           a.currentResetStatus != _selectedStatusFilter) {
         return false;
@@ -125,15 +140,15 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
         title: Text(
           _selectedStatusFilter == 'Active'
               ? _selectedServiceFilter == 'All'
-                  ? 'Active AI Resets'
-                  : '${_providerLabel(_selectedServiceFilter)} — Active Resets'
+                    ? 'Active AI Resets'
+                    : '${_providerLabel(_selectedServiceFilter)} — Active Resets'
               : _selectedStatusFilter == 'Cooldown'
-                  ? _selectedServiceFilter == 'All'
-                      ? 'Cooldown AI Accounts'
-                      : '${_providerLabel(_selectedServiceFilter)} — Cooldown'
-                  : _selectedServiceFilter == 'All'
-                      ? 'AI Accounts'
-                      : '${_providerLabel(_selectedServiceFilter)} Accounts',
+              ? _selectedServiceFilter == 'All'
+                    ? 'Cooldown AI Accounts'
+                    : '${_providerLabel(_selectedServiceFilter)} — Cooldown'
+              : _selectedServiceFilter == 'All'
+              ? 'AI Accounts'
+              : '${_providerLabel(_selectedServiceFilter)} Accounts',
           style: const TextStyle(fontWeight: FontWeight.bold),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -253,28 +268,28 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                     title: _searchQuery.isNotEmpty
                         ? 'No Matches Found'
                         : _selectedStatusFilter == 'Active'
-                            ? _selectedServiceFilter == 'All'
-                                ? 'No Active Resets'
-                                : 'No Active ${_providerLabel(_selectedServiceFilter)} Resets'
-                            : _selectedStatusFilter == 'Cooldown'
-                                ? _selectedServiceFilter == 'All'
-                                    ? 'No Accounts in Cooldown'
-                                    : 'No ${_providerLabel(_selectedServiceFilter)} in Cooldown'
-                                : 'No AI Accounts Saved',
+                        ? _selectedServiceFilter == 'All'
+                              ? 'No Active Resets'
+                              : 'No Active ${_providerLabel(_selectedServiceFilter)} Resets'
+                        : _selectedStatusFilter == 'Cooldown'
+                        ? _selectedServiceFilter == 'All'
+                              ? 'No Accounts in Cooldown'
+                              : 'No ${_providerLabel(_selectedServiceFilter)} in Cooldown'
+                        : 'No AI Accounts Saved',
                     message: _searchQuery.isNotEmpty
                         ? 'No AI accounts matching "$_searchQuery"'
                         : _selectedStatusFilter == 'Active'
-                            ? 'There are no active resets for this selection right now.'
-                            : _selectedStatusFilter == 'Cooldown'
-                                ? 'No AI accounts are currently waiting for their reset time.'
-                                : 'Keep track of ChatGPT, Claude, Gemini reset schedules & passwords',
+                        ? 'There are no active resets for this selection right now.'
+                        : _selectedStatusFilter == 'Cooldown'
+                        ? 'No AI accounts are currently waiting for their reset time.'
+                        : 'Keep track of ChatGPT, Claude, Gemini reset schedules & passwords',
                     icon: _searchQuery.isNotEmpty
                         ? Icons.search_off_rounded
                         : _selectedStatusFilter == 'Active'
-                            ? Icons.check_circle_outline
-                            : _selectedStatusFilter == 'Cooldown'
-                                ? Icons.schedule
-                                : Icons.smart_toy_outlined,
+                        ? Icons.check_circle_outline
+                        : _selectedStatusFilter == 'Cooldown'
+                        ? Icons.schedule
+                        : Icons.smart_toy_outlined,
                     actionLabel: 'Add AI Account',
                     onAction: _openAddDialog,
                   )
@@ -355,7 +370,8 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                                     spacing: 8,
                                                     runSpacing: 4,
                                                     crossAxisAlignment:
-                                                        WrapCrossAlignment.center,
+                                                        WrapCrossAlignment
+                                                            .center,
                                                     children: [
                                                       Text(
                                                         account.service,
@@ -515,7 +531,8 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
                                             authenticateOnReveal: true,
                                             authenticateOnCopy: true,
                                             hideOnBackground: true,
-                                            isScreenActive: widget.isScreenActive,
+                                            isScreenActive:
+                                                widget.isScreenActive,
                                           ),
                                         if (account.password.trim().isEmpty)
                                           const Text('No password saved'),
@@ -729,8 +746,9 @@ class _AIAccountsScreenState extends State<AIAccountsScreen> {
   }
 
   Future<void> _openAddDialog() async {
-    final defaultService =
-        _selectedServiceFilter != 'All' ? _selectedServiceFilter : null;
+    final defaultService = _selectedServiceFilter != 'All'
+        ? _selectedServiceFilter
+        : null;
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,

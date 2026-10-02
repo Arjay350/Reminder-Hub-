@@ -26,8 +26,7 @@ class PetWidget extends StatefulWidget {
   State<PetWidget> createState() => _PetWidgetState();
 }
 
-class _PetWidgetState extends State<PetWidget>
-    with TickerProviderStateMixin {
+class _PetWidgetState extends State<PetWidget> with TickerProviderStateMixin {
   late PetService _service;
 
   late AnimationController _breathingController;
@@ -58,7 +57,10 @@ class _PetWidgetState extends State<PetWidget>
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
     _breathingAnimation = Tween<double>(begin: -1.0, end: 1.0).animate(
-      CurvedAnimation(parent: _breathingController, curve: Curves.easeInOutSine),
+      CurvedAnimation(
+        parent: _breathingController,
+        curve: Curves.easeInOutSine,
+      ),
     );
 
     // 2. Tail Wag Controller
@@ -93,11 +95,17 @@ class _PetWidgetState extends State<PetWidget>
     );
     _jumpAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: -16.0).chain(CurveTween(curve: Curves.easeOutQuad)),
+        tween: Tween(
+          begin: 0.0,
+          end: -16.0,
+        ).chain(CurveTween(curve: Curves.easeOutQuad)),
         weight: 45,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: -16.0, end: 0.0).chain(CurveTween(curve: Curves.bounceOut)),
+        tween: Tween(
+          begin: -16.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.bounceOut)),
         weight: 55,
       ),
     ]).animate(_jumpController);
@@ -126,13 +134,15 @@ class _PetWidgetState extends State<PetWidget>
         state == PetState.eating) {
       _jumpController.forward(from: 0.0);
     } else if (state == PetState.surprised) {
-      _jumpController.animateTo(
-        -8.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-      ).then((_) {
-        if (mounted) _jumpController.reverse();
-      });
+      _jumpController
+          .animateTo(
+            -8.0,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+          )
+          .then((_) {
+            if (mounted) _jumpController.reverse();
+          });
     }
 
     // Adjust breathing tempo for sleep and hunger states (Section 2: less energetic when hungry)
@@ -207,6 +217,7 @@ class _PetWidgetState extends State<PetWidget>
         _service.horizontalWalkPositionNotifier,
         _service.speechNotifier,
         _service.hasBackpackNotifier,
+        _service.hasBirthdayTodayNotifier,
         _breathingAnimation,
         _tailAnimation,
         _leftEarAnimation,
@@ -228,15 +239,20 @@ class _PetWidgetState extends State<PetWidget>
 
         final isWalking = state == PetState.walking;
         final inSchoolOrStudy =
-            state == PetState.studying || _service.isClassHappening || _service.isStudyTimerRunning;
-        final hasBackpack = _service.hasBackpackNotifier.value ||
+            state == PetState.studying ||
+            _service.isClassHappening ||
+            _service.isStudyTimerRunning;
+        final hasBackpack =
+            _service.hasBackpackNotifier.value ||
             inSchoolOrStudy ||
             _service.isClassHappening ||
             _service.isClassUpcoming;
         final hasBook = inSchoolOrStudy || _service.isClassHappening;
+        final hasBirthdayToday = _service.hasBirthdayTodayNotifier.value;
 
         return Semantics(
-          label: 'ReminderHub companion: ${prefs.name}, status: ${state.name}, mood: ${mood.name}',
+          label:
+              'ReminderHub companion: ${prefs.name}, status: ${state.name}, mood: ${mood.name}',
           button: true,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -265,12 +281,16 @@ class _PetWidgetState extends State<PetWidget>
                       top: -2,
                       right: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2.5,
+                        ),
                         decoration: BoxDecoration(
-                          color: (prefs.hungerState == HungerState.empty
-                                  ? const Color(0xFFEF4444)
-                                  : const Color(0xFFF97316))
-                              .withValues(alpha: 0.92),
+                          color:
+                              (prefs.hungerState == HungerState.empty
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFFF97316))
+                                  .withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
@@ -304,10 +324,7 @@ class _PetWidgetState extends State<PetWidget>
 
                   // Cat & Effects Canvas with jump and walk translations
                   Transform.translate(
-                    offset: Offset(
-                      walkOffset * 40.0,
-                      _jumpAnimation.value,
-                    ),
+                    offset: Offset(walkOffset * 40.0, _jumpAnimation.value),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
@@ -324,11 +341,14 @@ class _PetWidgetState extends State<PetWidget>
                             leftEarAngle: _leftEarAnimation.value,
                             rightEarAngle: _rightEarAnimation.value,
                             pawStepOffset: _effectsController.value * 2 * pi,
-                            blinkProgress: state == PetState.blinking ? 1.0 : 0.0,
+                            blinkProgress: state == PetState.blinking
+                                ? 1.0
+                                : 0.0,
                             isWalking: isWalking,
                             isStudying: inSchoolOrStudy,
                             hasBackpack: hasBackpack,
                             hasBook: hasBook,
+                            hasBirthday: hasBirthdayToday,
                             growthStage: prefs.growthStage,
                             bodyCondition: prefs.bodyCondition,
                           ),

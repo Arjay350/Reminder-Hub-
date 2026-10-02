@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import '../../core/utilities/formatters.dart';
 import '../../models/app_models.dart';
 import '../../services/hive_service.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/custom_card.dart';
+import '../../widgets/birthday_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -78,6 +80,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final eventsForSelected = _getEventsForDate(_selectedDate);
+    final hasBirthdayForSelected = eventsForSelected.any(
+      (item) => item.birthday != null,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -236,52 +241,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                       if (_hideSchoolSchedule) ...[
                         const SizedBox(width: 8),
-                        Tooltip(
-                          message: 'School schedule is hidden. Tap to show.',
-                          child: InkWell(
-                            onTap: _toggleHideSchoolSchedule,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.amber.shade900.withValues(alpha: 0.3)
+                                : Colors.amber.shade100,
                             borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.amber.withValues(alpha: 0.5),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.school_outlined,
+                                size: 13,
                                 color: isDark
-                                    ? Colors.amber.shade900.withValues(
-                                        alpha: 0.3,
-                                      )
-                                    : Colors.amber.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: Colors.amber.withValues(alpha: 0.5),
-                                  width: 1,
+                                    ? Colors.amber.shade300
+                                    : Colors.amber.shade800,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Classes Hidden',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? Colors.amber.shade300
+                                      : Colors.amber.shade800,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.school_outlined,
-                                    size: 13,
-                                    color: isDark
-                                        ? Colors.amber.shade300
-                                        : Colors.amber.shade800,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Classes Hidden',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark
-                                          ? Colors.amber.shade300
-                                          : Colors.amber.shade800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
@@ -311,11 +307,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           const SizedBox(height: 10),
 
+          if (!hasBirthdayForSelected)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('No birthdays on this date.'),
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextButton.icon(
+                onPressed: _openBirthdayForm,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add Birthday'),
+              ),
+            ),
+          ),
+
           Expanded(
             child: eventsForSelected.isEmpty
                 ? Center(
                     child: Text(
-                      'No events scheduled for this date.',
+                      'No other events scheduled for this date.',
                       style: TextStyle(
                         color: Colors.grey.shade500,
                         fontSize: 14,
@@ -346,6 +362,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   ),
                                   child: ListTile(
                                     contentPadding: EdgeInsets.zero,
+                                    onTap: item.birthday == null
+                                        ? null
+                                        : () => _showBirthdayDetails(
+                                            item.birthday!,
+                                          ),
                                     leading: Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
@@ -412,6 +433,114 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openBirthdayForm({Birthday? birthday}) async {
+    final existingIds = _birthdays.map((item) => item.id).toSet();
+    final result = await showModalBottomSheet<dynamic>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BirthdayDialog(
+        birthday: birthday,
+        initialDate: birthday == null ? _selectedDate : null,
+      ),
+    );
+    if (!mounted || result == null) return;
+
+    await _loadEvents();
+    if (result is Birthday &&
+        existingIds.contains(result.id) &&
+        result.id != birthday?.id) {
+      await _openBirthdayForm(birthday: result);
+    }
+  }
+
+  Future<void> _showBirthdayDetails(Birthday birthday) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Birthday Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              birthday.isUserBirthday ? 'My Birthday' : birthday.name,
+              style: Theme.of(
+                dialogContext,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              DateFormat(
+                birthday.yearKnown ? 'MMMM d, y' : 'MMMM d',
+              ).format(birthday.birthDate),
+            ),
+            if (birthday.relationship.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('Relationship: ${birthday.relationship}'),
+            ],
+            if (birthday.customNotes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(birthday.customNotes),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _openBirthdayForm(birthday: birthday);
+            },
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Edit Birthday'),
+          ),
+          TextButton.icon(
+            onPressed: () => _confirmDeleteBirthday(birthday, dialogContext),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Delete Birthday'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteBirthday(
+    Birthday birthday,
+    BuildContext detailsContext,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: detailsContext,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this birthday?'),
+        content: const Text(
+          'This birthday will be removed from your Birthday Tracker.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    if (detailsContext.mounted) Navigator.pop(detailsContext);
+    await NotificationService.instance.cancelBirthdayNotifications(birthday);
+    await _hive.deleteBirthday(birthday.id);
+    await _loadEvents();
   }
 
   Widget _buildCalendarGrid() {
@@ -646,13 +775,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final isUser = birthday.isUserBirthday;
         items.add(
           _CalendarEventItem(
-            title: isUser ? '🎂 Your Birthday' : birthday.name,
+            title: isUser ? '🎂 My Birthday' : birthday.name,
             subtitle: isUser
                 ? 'Celebration day${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}'
                 : '${birthday.relationship}$ageText${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}',
             typeLabel: isUser ? 'Your Birthday' : 'Birthday',
             icon: Icons.cake_rounded,
             color: isUser ? const Color(0xFFEC4899) : const Color(0xFFF472B6),
+            birthday: birthday,
           ),
         );
       }
@@ -669,6 +799,7 @@ class _CalendarEventItem {
     required this.typeLabel,
     required this.icon,
     required this.color,
+    this.birthday,
   });
 
   final String title;
@@ -676,4 +807,5 @@ class _CalendarEventItem {
   final String typeLabel;
   final IconData icon;
   final Color color;
+  final Birthday? birthday;
 }

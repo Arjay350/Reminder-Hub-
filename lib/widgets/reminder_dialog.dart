@@ -29,19 +29,19 @@ class _ReminderDialogState extends State<ReminderDialog> {
   late String _priority;
   late String _notes;
 
-  final TextEditingController _customMinutesController = TextEditingController(text: '45');
+  final TextEditingController _customMinutesController = TextEditingController(
+    text: '45',
+  );
   bool _canExactAlarm = true;
 
   final List<String> _categories = [
-    'Bills',
-    'AI Reset',
     'Subscriptions',
     'Gaming',
     'Work',
     'School',
     'Personal',
     'Household',
-    'Custom'
+    'Custom',
   ];
 
   final List<String> _repeats = [
@@ -74,7 +74,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
     super.initState();
     final r = widget.reminder;
     _title = r?.title ?? '';
-    _category = r?.category ?? 'Bills';
+    _category = r?.category ?? 'Personal';
     _description = r?.description ?? '';
     _date = r?.date ?? DateTime.now().add(const Duration(days: 1));
     _time = r != null
@@ -103,7 +103,8 @@ class _ReminderDialogState extends State<ReminderDialog> {
   }
 
   Future<void> _checkExactAlarmStatus() async {
-    final canExact = await NotificationService.instance.canScheduleExactAlarms();
+    final canExact = await NotificationService.instance
+        .canScheduleExactAlarms();
     if (mounted) {
       setState(() => _canExactAlarm = canExact);
     }
@@ -175,7 +176,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
                 children: [
                   Text(
                     isEditing ? 'Edit Reminder' : 'New Reminder',
-                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -190,11 +193,14 @@ class _ReminderDialogState extends State<ReminderDialog> {
                 initialValue: _title,
                 decoration: InputDecoration(
                   labelText: 'Reminder Title *',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   prefixIcon: const Icon(Icons.title),
                 ),
-                validator: (val) =>
-                    val == null || val.trim().isEmpty ? 'Please enter a title' : null,
+                validator: (val) => val == null || val.trim().isEmpty
+                    ? 'Please enter a title'
+                    : null,
                 onSaved: (val) => _title = val!.trim(),
               ),
               const SizedBox(height: 12),
@@ -204,10 +210,15 @@ class _ReminderDialogState extends State<ReminderDialog> {
                 initialValue: _category,
                 decoration: InputDecoration(
                   labelText: 'Category',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   prefixIcon: const Icon(Icons.category),
                 ),
                 items: _categories
+                    .followedBy(
+                      _categories.contains(_category) ? const [] : [_category],
+                    )
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (val) => setState(() => _category = val!),
@@ -223,15 +234,21 @@ class _ReminderDialogState extends State<ReminderDialog> {
                         final picked = await showDatePicker(
                           context: context,
                           initialDate: _date,
-                          firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                          lastDate: DateTime.now().add(const Duration(days: 1825)),
+                          firstDate: DateTime.now().subtract(
+                            const Duration(days: 365),
+                          ),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 1825),
+                          ),
                         );
                         if (picked != null) setState(() => _date = picked);
                       },
                       child: InputDecorator(
                         decoration: InputDecoration(
                           labelText: 'Date',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           prefixIcon: const Icon(Icons.calendar_today),
                         ),
                         child: Text(DateFormat('MMM dd, yyyy').format(_date)),
@@ -251,7 +268,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
                       child: InputDecorator(
                         decoration: InputDecoration(
                           labelText: 'Time',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           prefixIcon: const Icon(Icons.access_time),
                         ),
                         child: Text(_time.format(context)),
@@ -270,11 +289,15 @@ class _ReminderDialogState extends State<ReminderDialog> {
                       initialValue: _repeat,
                       decoration: InputDecoration(
                         labelText: 'Repeat (Offline)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         prefixIcon: const Icon(Icons.repeat),
                       ),
                       items: _repeats
-                          .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                          .map(
+                            (r) => DropdownMenuItem(value: r, child: Text(r)),
+                          )
                           .toList(),
                       onChanged: (val) => setState(() => _repeat = val!),
                     ),
@@ -285,11 +308,15 @@ class _ReminderDialogState extends State<ReminderDialog> {
                       initialValue: _priority,
                       decoration: InputDecoration(
                         labelText: 'Priority',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         prefixIcon: const Icon(Icons.flag),
                       ),
                       items: _priorities
-                          .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                          .map(
+                            (p) => DropdownMenuItem(value: p, child: Text(p)),
+                          )
                           .toList(),
                       onChanged: (val) => setState(() => _priority = val!),
                     ),
@@ -301,11 +328,16 @@ class _ReminderDialogState extends State<ReminderDialog> {
               // Recurrence schedule helper badge
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Text(
                   _getRecurrenceHint(theme),
@@ -323,7 +355,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
                 initialValue: _reminderBefore,
                 decoration: InputDecoration(
                   labelText: 'Notification Offset',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   prefixIcon: const Icon(Icons.alarm),
                 ),
                 items: _reminderBefores
@@ -341,14 +375,17 @@ class _ReminderDialogState extends State<ReminderDialog> {
                   decoration: InputDecoration(
                     labelText: 'Custom Offset (Minutes before event)',
                     hintText: 'e.g. 45',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     prefixIcon: const Icon(Icons.timer_outlined),
                     suffixText: 'minutes before',
                   ),
                   validator: (val) {
                     if (_reminderBefore == 'Custom') {
                       final n = int.tryParse(val ?? '');
-                      if (n == null || n <= 0) return 'Enter a valid number of minutes';
+                      if (n == null || n <= 0)
+                        return 'Enter a valid number of minutes';
                     }
                     return null;
                   },
@@ -361,7 +398,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
                 initialValue: _description,
                 decoration: InputDecoration(
                   labelText: 'Description (optional)',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   prefixIcon: const Icon(Icons.notes),
                 ),
                 onSaved: (val) => _description = val ?? '',
@@ -375,21 +414,37 @@ class _ReminderDialogState extends State<ReminderDialog> {
                   decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: Colors.amber.shade700.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.amber.shade800,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Exact Alarms access is off. Alarms will use battery-saving mode.',
-                          style: TextStyle(fontSize: 11, color: Colors.amber.shade900),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.amber.shade900,
+                          ),
                         ),
                       ),
                       TextButton(
-                        onPressed: () => NotificationService.instance.openExactAlarmSettings(),
-                        child: const Text('Enable', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        onPressed: () => NotificationService.instance
+                            .openExactAlarmSettings(),
+                        child: const Text(
+                          'Enable',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -441,7 +496,13 @@ class _ReminderDialogState extends State<ReminderDialog> {
       title: _title,
       category: _category,
       description: _description,
-      date: DateTime(_date.year, _date.month, _date.day, _time.hour, _time.minute),
+      date: DateTime(
+        _date.year,
+        _date.month,
+        _date.day,
+        _time.hour,
+        _time.minute,
+      ),
       time: reminderTime,
       repeat: _repeat,
       reminderBefore: effectiveReminderBefore,
@@ -455,4 +516,3 @@ class _ReminderDialogState extends State<ReminderDialog> {
     if (mounted) Navigator.pop(context, reminder);
   }
 }
-

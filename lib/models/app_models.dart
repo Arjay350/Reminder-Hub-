@@ -170,6 +170,24 @@ class Birthday {
     return null;
   }
 
+  static List<Birthday> keepSingleUserBirthday(List<Birthday> birthdays) {
+    final userBirthdays = birthdays
+        .where((birthday) => birthday.isUserBirthday)
+        .toList();
+    if (userBirthdays.length <= 1) return List.of(birthdays);
+
+    final retainedBirthday = userBirthdays.firstWhere(
+      (birthday) => birthday.name.trim().isNotEmpty,
+      orElse: () => userBirthdays.first,
+    );
+    return birthdays
+        .where(
+          (birthday) =>
+              !birthday.isUserBirthday || birthday.id == retainedBirthday.id,
+        )
+        .toList();
+  }
+
   static DateTime _coerceBirthDate(DateTime parsed, bool yearKnown) {
     if (!yearKnown) {
       return DateTime(2000, parsed.month, parsed.day);

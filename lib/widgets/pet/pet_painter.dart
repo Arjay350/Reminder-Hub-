@@ -20,6 +20,7 @@ class PetCatPainter extends CustomPainter {
     required this.isStudying,
     this.hasBackpack = false,
     this.hasBook = false,
+    this.hasBirthday = false,
     this.growthStage = PetGrowthStage.tinyKitten,
     this.bodyCondition = PetBodyCondition.healthy,
   });
@@ -38,6 +39,7 @@ class PetCatPainter extends CustomPainter {
   final bool isStudying;
   final bool hasBackpack;
   final bool hasBook;
+  final bool hasBirthday;
   final PetGrowthStage growthStage;
   final PetBodyCondition bodyCondition;
 
@@ -85,6 +87,10 @@ class PetCatPainter extends CustomPainter {
       _drawAdultCollar(canvas, breathShift);
     }
 
+    if (hasBirthday) {
+      _drawBirthdayHat(canvas);
+    }
+
     // Draw Open Book/Notebook in front (if studying or school class time)
     if (isStudying || hasBook) {
       _drawOpenBook(canvas, breathShift);
@@ -95,11 +101,16 @@ class PetCatPainter extends CustomPainter {
       _drawFoodBowl(canvas, breathShift);
     }
 
+    if (hasBirthday) {
+      _drawBirthdayCake(canvas, breathShift);
+    }
+
     canvas.restore();
   }
 
   void _drawTail(Canvas canvas, _CatPalette palette) {
-    final isKitten = growthStage == PetGrowthStage.tinyKitten ||
+    final isKitten =
+        growthStage == PetGrowthStage.tinyKitten ||
         growthStage == PetGrowthStage.growingKitten;
     final isOlderKitten = growthStage == PetGrowthStage.olderKitten;
 
@@ -138,7 +149,9 @@ class PetCatPainter extends CustomPainter {
       final tipPaint = Paint()
         ..color = palette.secondary!
         ..style = PaintingStyle.fill;
-      final tipOffset = isKitten ? const Offset(-7, -28) : const Offset(-13, -42);
+      final tipOffset = isKitten
+          ? const Offset(-7, -28)
+          : const Offset(-13, -42);
       canvas.drawCircle(tipOffset, isKitten ? 5.0 : 6.5, tipPaint);
     }
 
@@ -146,7 +159,8 @@ class PetCatPainter extends CustomPainter {
   }
 
   void _drawBackPaws(Canvas canvas, _CatPalette palette) {
-    final isKitten = growthStage == PetGrowthStage.tinyKitten ||
+    final isKitten =
+        growthStage == PetGrowthStage.tinyKitten ||
         growthStage == PetGrowthStage.growingKitten;
     final pawScale = isKitten ? 0.85 : 1.0;
     final widthFactor = bodyCondition.bodyWidthFactor;
@@ -177,14 +191,16 @@ class PetCatPainter extends CustomPainter {
   }
 
   void _drawBody(Canvas canvas, _CatPalette palette, double breathShift) {
-    final isKitten = growthStage == PetGrowthStage.tinyKitten ||
+    final isKitten =
+        growthStage == PetGrowthStage.tinyKitten ||
         growthStage == PetGrowthStage.growingKitten;
     final isAdult = growthStage == PetGrowthStage.adultCat;
 
     // Kitten has a smaller, shorter, more compact baby body relative to head
     final growthBodyFactor = isKitten ? 0.88 : (isAdult ? 1.06 : 1.0);
     final widthFactor = bodyCondition.bodyWidthFactor * growthBodyFactor;
-    final heightFactor = (0.96 + (0.04 * widthFactor)) * (isKitten ? 0.90 : 1.0);
+    final heightFactor =
+        (0.96 + (0.04 * widthFactor)) * (isKitten ? 0.90 : 1.0);
 
     final bodyRect = Rect.fromCenter(
       center: Offset(0, (isKitten ? 10 : 8) + breathShift),
@@ -245,14 +261,20 @@ class PetCatPainter extends CustomPainter {
         ..color = palette.secondary!
         ..style = PaintingStyle.fill;
       canvas.drawOval(
-        Rect.fromLTWH(-22 * widthFactor, -2 + breathShift, 14 * widthFactor, 18),
+        Rect.fromLTWH(
+          -22 * widthFactor,
+          -2 + breathShift,
+          14 * widthFactor,
+          18,
+        ),
         spotPaint,
       );
     }
   }
 
   void _drawFrontPaws(Canvas canvas, _CatPalette palette, double breathShift) {
-    final isKitten = growthStage == PetGrowthStage.tinyKitten ||
+    final isKitten =
+        growthStage == PetGrowthStage.tinyKitten ||
         growthStage == PetGrowthStage.growingKitten;
     final pawScale = isKitten ? 0.85 : 1.0;
     final widthFactor = bodyCondition.bodyWidthFactor;
@@ -271,7 +293,8 @@ class PetCatPainter extends CustomPainter {
     final leftPawOffset = isWalking ? sin(pawStepOffset) * 4.0 : 0.0;
     final rightPawOffset = isWalking ? -sin(pawStepOffset) * 4.0 : 0.0;
 
-    final liftPaw = (state == PetState.happy ||
+    final liftPaw =
+        (state == PetState.happy ||
         state == PetState.celebrating ||
         state == PetState.eating);
     final leftLift = liftPaw ? -6.0 : 0.0;
@@ -321,7 +344,8 @@ class PetCatPainter extends CustomPainter {
       headTilt = -0.04;
     }
 
-    final isKitten = growthStage == PetGrowthStage.tinyKitten ||
+    final isKitten =
+        growthStage == PetGrowthStage.tinyKitten ||
         growthStage == PetGrowthStage.growingKitten;
     final headCenterY = (isKitten ? -22 : -24) + breathShift * 0.7;
     canvas.translate(0, headCenterY);
@@ -332,7 +356,9 @@ class PetCatPainter extends CustomPainter {
 
     // 2. Draw Head Base (Kittens have a larger, rounder head relative to body)
     final cheekFactor = bodyCondition.cheekFactor;
-    final headScale = isKitten ? 1.06 : (growthStage == PetGrowthStage.adultCat ? 0.98 : 1.0);
+    final headScale = isKitten
+        ? 1.06
+        : (growthStage == PetGrowthStage.adultCat ? 0.98 : 1.0);
     final headRect = Rect.fromCenter(
       center: Offset.zero,
       width: 64 * cheekFactor * headScale,
@@ -350,7 +376,10 @@ class PetCatPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(headRect, Radius.circular(24 * cheekFactor * headScale)),
+      RRect.fromRectAndRadius(
+        headRect,
+        Radius.circular(24 * cheekFactor * headScale),
+      ),
       headPaint,
     );
 
@@ -359,16 +388,32 @@ class PetCatPainter extends CustomPainter {
       final spotPaint = Paint()
         ..color = palette.secondary!
         ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(-16 * headScale, -10 * headScale), 10 * headScale, spotPaint);
+      canvas.drawCircle(
+        Offset(-16 * headScale, -10 * headScale),
+        10 * headScale,
+        spotPaint,
+      );
     } else if (coatStyle == PetCoatStyle.gingerTabby) {
       final stripePaint = Paint()
         ..color = palette.stripeColor
         ..strokeWidth = 2.0
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke;
-      canvas.drawLine(Offset(-6 * headScale, -18 * headScale), Offset(-4 * headScale, -10 * headScale), stripePaint);
-      canvas.drawLine(Offset(0, -19 * headScale), Offset(0, -9 * headScale), stripePaint);
-      canvas.drawLine(Offset(6 * headScale, -18 * headScale), Offset(4 * headScale, -10 * headScale), stripePaint);
+      canvas.drawLine(
+        Offset(-6 * headScale, -18 * headScale),
+        Offset(-4 * headScale, -10 * headScale),
+        stripePaint,
+      );
+      canvas.drawLine(
+        Offset(0, -19 * headScale),
+        Offset(0, -9 * headScale),
+        stripePaint,
+      );
+      canvas.drawLine(
+        Offset(6 * headScale, -18 * headScale),
+        Offset(4 * headScale, -10 * headScale),
+        stripePaint,
+      );
     }
 
     // 3. Draw Eyes
@@ -486,10 +531,15 @@ class PetCatPainter extends CustomPainter {
       return;
     }
 
-    final isKitten = growthStage == PetGrowthStage.tinyKitten ||
+    final isKitten =
+        growthStage == PetGrowthStage.tinyKitten ||
         growthStage == PetGrowthStage.growingKitten;
     final isOlderKitten = growthStage == PetGrowthStage.olderKitten;
-    final eyeScale = isKitten ? 1.20 : (isOlderKitten ? 1.10 : (growthStage == PetGrowthStage.adultCat ? 0.95 : 1.0));
+    final eyeScale = isKitten
+        ? 1.20
+        : (isOlderKitten
+              ? 1.10
+              : (growthStage == PetGrowthStage.adultCat ? 0.95 : 1.0));
 
     final eyeRadiusX = (isSurprised ? 7.5 : 6.0) * eyeScale;
     final eyeRadiusY = (isSurprised ? 8.5 : 7.0) * eyeScale;
@@ -577,10 +627,12 @@ class PetCatPainter extends CustomPainter {
       ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round;
 
-    final isWorried = mood == PetMood.worried ||
+    final isWorried =
+        mood == PetMood.worried ||
         state == PetState.worried ||
         state == PetState.hungry;
-    final isMeowing = state == PetState.happy ||
+    final isMeowing =
+        state == PetState.happy ||
         state == PetState.celebrating ||
         state == PetState.eating;
 
@@ -611,31 +663,50 @@ class PetCatPainter extends CustomPainter {
     final whiskerLen = growthStage == PetGrowthStage.tinyKitten
         ? 8.0
         : (growthStage == PetGrowthStage.growingKitten
-            ? 10.5
-            : (growthStage == PetGrowthStage.adultCat ? 16.5 : 14.0));
+              ? 10.5
+              : (growthStage == PetGrowthStage.adultCat ? 16.5 : 14.0));
 
     final whiskerPaint = Paint()
       ..color = const Color(0xFF4A4242).withValues(alpha: 0.65)
       ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(const Offset(-16, 3), Offset(-16 - whiskerLen, 0), whiskerPaint);
-    canvas.drawLine(const Offset(-16, 6), Offset(-16 - (whiskerLen * 0.9), 7), whiskerPaint);
+    canvas.drawLine(
+      const Offset(-16, 3),
+      Offset(-16 - whiskerLen, 0),
+      whiskerPaint,
+    );
+    canvas.drawLine(
+      const Offset(-16, 6),
+      Offset(-16 - (whiskerLen * 0.9), 7),
+      whiskerPaint,
+    );
 
-    canvas.drawLine(const Offset(16, 3), Offset(16 + whiskerLen, 0), whiskerPaint);
-    canvas.drawLine(const Offset(16, 6), Offset(16 + (whiskerLen * 0.9), 7), whiskerPaint);
+    canvas.drawLine(
+      const Offset(16, 3),
+      Offset(16 + whiskerLen, 0),
+      whiskerPaint,
+    );
+    canvas.drawLine(
+      const Offset(16, 6),
+      Offset(16 + (whiskerLen * 0.9), 7),
+      whiskerPaint,
+    );
 
     // Blush cheeks (Kittens have subtle persistent cute baby blush)
-    final isKitten = growthStage == PetGrowthStage.tinyKitten ||
+    final isKitten =
+        growthStage == PetGrowthStage.tinyKitten ||
         growthStage == PetGrowthStage.growingKitten;
-    final showBlush = isKitten ||
+    final showBlush =
+        isKitten ||
         state == PetState.beingPetted ||
         state == PetState.happy ||
         state == PetState.eating ||
         mood == PetMood.happy;
 
     if (showBlush) {
-      final blushOpacity = (state == PetState.beingPetted ||
+      final blushOpacity =
+          (state == PetState.beingPetted ||
               state == PetState.happy ||
               state == PetState.eating ||
               mood == PetMood.happy)
@@ -857,6 +928,99 @@ class PetCatPainter extends CustomPainter {
     canvas.restore();
   }
 
+  void _drawBirthdayHat(Canvas canvas) {
+    canvas.save();
+    canvas.translate(0, -43);
+
+    final hatPath = Path()
+      ..moveTo(-10, 1)
+      ..lineTo(0, -15)
+      ..lineTo(10, 1)
+      ..close();
+    canvas.drawPath(
+      hatPath,
+      Paint()
+        ..color = const Color(0xFFEC4899)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(-11, -1, 22, 4),
+        const Radius.circular(2),
+      ),
+      Paint()..color = const Color(0xFFFBBF24),
+    );
+    canvas.drawCircle(
+      const Offset(0, -16),
+      2.5,
+      Paint()..color = const Color(0xFFFBBF24),
+    );
+    canvas.drawCircle(
+      const Offset(0, -7),
+      1.5,
+      Paint()..color = const Color(0xFFFFF1F2),
+    );
+
+    canvas.restore();
+  }
+
+  void _drawBirthdayCake(Canvas canvas, double breathShift) {
+    canvas.save();
+    canvas.translate(30, 26 + breathShift);
+
+    canvas.drawOval(
+      const Rect.fromLTWH(-13, 11, 27, 6),
+      Paint()..color = Colors.black.withValues(alpha: 0.18),
+    );
+    canvas.drawOval(
+      const Rect.fromLTWH(-13, 8, 27, 6),
+      Paint()..color = const Color(0xFFFFD6E7),
+    );
+
+    final cakeRect = const Rect.fromLTWH(-10, -4, 21, 14);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(cakeRect, const Radius.circular(3)),
+      Paint()..color = const Color(0xFFF472B6),
+    );
+    canvas.drawOval(
+      const Rect.fromLTWH(-10, -6, 21, 7),
+      Paint()..color = const Color(0xFFFFF1F2),
+    );
+
+    final icingPath = Path()
+      ..moveTo(-7, -3)
+      ..lineTo(-5, 1)
+      ..lineTo(-3, -3)
+      ..lineTo(0, 2)
+      ..lineTo(3, -3)
+      ..lineTo(6, 1)
+      ..lineTo(8, -3);
+    canvas.drawPath(
+      icingPath,
+      Paint()
+        ..color = const Color(0xFFFFF1F2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round,
+    );
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(-1, -13, 3, 8),
+        const Radius.circular(1),
+      ),
+      Paint()..color = const Color(0xFFFBBF24),
+    );
+    final flamePath = Path()
+      ..moveTo(-1, -13)
+      ..quadraticBezierTo(-3, -17, 1, -19)
+      ..quadraticBezierTo(4, -16, 2, -13)
+      ..close();
+    canvas.drawPath(flamePath, Paint()..color = const Color(0xFFFB923C));
+
+    canvas.restore();
+  }
+
   void _drawOpenBook(Canvas canvas, double breathShift) {
     canvas.save();
     canvas.translate(0, 22 + breathShift);
@@ -1002,6 +1166,7 @@ class PetCatPainter extends CustomPainter {
         oldDelegate.isStudying != isStudying ||
         oldDelegate.hasBackpack != hasBackpack ||
         oldDelegate.hasBook != hasBook ||
+        oldDelegate.hasBirthday != hasBirthday ||
         oldDelegate.growthStage != growthStage ||
         oldDelegate.bodyCondition != bodyCondition;
   }
