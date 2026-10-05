@@ -63,8 +63,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       SnackBar(
         content: Text(
           newValue
-              ? 'School schedule hidden from calendar (School reminders like assignments & projects remain visible)'
-              : 'School schedule shown in calendar',
+              ? 'Recurring school classes hidden in Calendar and Reminders. School tasks remain visible.'
+              : 'Recurring school classes shown in Calendar and Reminders.',
         ),
         duration: const Duration(seconds: 3),
         action: SnackBarAction(

@@ -448,8 +448,22 @@ class _SchoolClassDialogState extends State<SchoolClassDialog> {
     );
 
     await HiveService.instance.saveSchoolClass(schoolClass);
-    await NotificationService.instance.scheduleSchoolClassNotification(schoolClass);
-    await WidgetService.instance.updateSchoolWidget();
-    if (mounted) Navigator.pop(context, schoolClass);
+    final notificationsScheduled = await NotificationService.instance
+        .scheduleSchoolClassNotification(schoolClass);
+    final widgetUpdated = await WidgetService.instance.updateSchoolWidget();
+    if (!mounted) return;
+
+    if (!notificationsScheduled || !widgetUpdated) {
+      final messages = <String>[
+        if (!notificationsScheduled)
+          'Schedule saved, but class notifications could not be scheduled. Check notification permission and try again.',
+        if (!widgetUpdated)
+          'The schedule was saved, but the home-screen widget could not be refreshed.',
+      ];
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(messages.join(' '))));
+    }
+    Navigator.pop(context, schoolClass);
   }
 }

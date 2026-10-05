@@ -60,6 +60,7 @@ class _RemindersScreenState extends State<RemindersScreen>
   String _selectedCategory = 'All';
   String _selectedFilter = 'Pending'; // All, Pending, Completed, High
   String _searchQuery = '';
+  bool _hideSchoolSchedule = false;
 
   final List<String> _categories = [
     'All',
@@ -121,6 +122,7 @@ class _RemindersScreenState extends State<RemindersScreen>
     final reminders = _hive.getReminders();
     final aiAccounts = _hive.getAIAccounts();
     final schoolClasses = _hive.getSchoolClasses();
+    final settings = _hive.getSettings();
     final now = DateTime.now();
 
     final List<UnifiedReminderEntry> entries = [];
@@ -171,6 +173,7 @@ class _RemindersScreenState extends State<RemindersScreen>
 
     // 3. Connected School Classes (Next recurring occurrence)
     for (final c in schoolClasses) {
+      if (settings.hideSchoolScheduleInCalendar) continue;
       if (c.daysOfWeek.isEmpty) continue;
       int? minDaysAhead;
       for (final d in c.daysOfWeek) {
@@ -213,7 +216,31 @@ class _RemindersScreenState extends State<RemindersScreen>
 
     setState(() {
       _allEntries = entries;
+      _hideSchoolSchedule = settings.hideSchoolScheduleInCalendar;
     });
+  }
+
+  Future<void> _toggleHideSchoolSchedule() async {
+    final newValue = !_hideSchoolSchedule;
+    final settings = _hive.getSettings();
+    await _hive.saveSettings(
+      settings.copyWith(hideSchoolScheduleInCalendar: newValue),
+    );
+    if (!mounted) return;
+    setState(() {
+      _hideSchoolSchedule = newValue;
+    });
+    await _loadReminders();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          newValue
+              ? 'Recurring school classes are hidden in Calendar and Reminders. School tasks remain visible.'
+              : 'Recurring school classes are shown in Calendar and Reminders.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -260,6 +287,16 @@ class _RemindersScreenState extends State<RemindersScreen>
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            tooltip: _hideSchoolSchedule
+                ? 'Show school schedule in Calendar and Reminders'
+                : 'Hide school schedule in Calendar and Reminders',
+            onPressed: _toggleHideSchoolSchedule,
+            icon: Icon(
+              _hideSchoolSchedule ? Icons.school_outlined : Icons.school,
+              color: _hideSchoolSchedule ? Colors.grey : null,
+            ),
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             initialValue: _selectedFilter,

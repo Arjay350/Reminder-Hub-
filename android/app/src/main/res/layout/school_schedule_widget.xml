@@ -127,7 +127,7 @@
                     android:layout_height="11dp"
                     android:contentDescription="Countdown"
                     android:src="@drawable/ic_widget_clock" />
-                <TextView
+                <Chronometer
                     android:id="@+id/widget_countdown"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
