@@ -289,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               subtitle: const Text(
-                'Hide recurring classes in calendar to focus on assignments & projects',
+                'Hide recurring classes in Calendar and Reminders. School tasks remain visible.',
                 style: TextStyle(fontSize: 12),
               ),
               value: _settings.hideSchoolScheduleInCalendar,
@@ -322,7 +322,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       title: const Text(
                         'Pet Companion',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                       subtitle: Text(
                         petPrefs.enabled
@@ -356,7 +359,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         title: const Text(
                           'Companion Settings & Appearance',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                         subtitle: Text(
                           'Coat: ${petPrefs.coatStyle.name} • ${petPrefs.totalPets} pats',
@@ -468,11 +474,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       final authenticated = await showSecureActionGate(
                         context,
                         title: 'Disable Fingerprint Unlock',
-                        message:
-                            'Authenticate to turn off fingerprint unlock.',
+                        message: 'Authenticate to turn off fingerprint unlock.',
                       );
                       if (!authenticated) return;
-                      _saveSettings(_settings.copyWith(biometricEnabled: false));
+                      _saveSettings(
+                        _settings.copyWith(biometricEnabled: false),
+                      );
                     }
                   },
                 ),

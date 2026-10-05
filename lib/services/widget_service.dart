@@ -134,8 +134,9 @@ class WidgetService {
 
   /// Updates both native Android Home Screen Widgets (Today's Classes & Weekly Timetable)
   /// directly from the existing SchoolClass Hive box (single source of truth).
-  Future<void> updateSchoolWidget() async {
+  Future<bool> updateSchoolWidget() async {
     try {
+      if (kIsWeb) return true;
       final hive = HiveService.instance;
       await hive.ensureInitialized();
 
@@ -338,14 +339,14 @@ class WidgetService {
         'dayModes': timetableDayModes,
       };
 
-      if (!kIsWeb) {
-        await _channel.invokeMethod('updateAllWidgets', {
-          'today': todayPayload,
-          'timetable': timetablePayload,
-        });
-      }
+      await _channel.invokeMethod('updateAllWidgets', {
+        'today': todayPayload,
+        'timetable': timetablePayload,
+      });
+      return true;
     } catch (e) {
       debugPrint('WidgetService.updateSchoolWidget error: $e');
+      return false;
     }
   }
 }

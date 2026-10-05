@@ -1,25 +1,23 @@
-2026/09/30-17:03:57.777 5384 Reusing MANIFEST C:\Users\rjxas\AppData\Local\Temp\flutter_tools.fea4e0b9\flutter_tools_chrome_device.44587828\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
-2026/09/30-17:03:57.781 5384 Recovering log #39
-2026/09/30-17:03:57.783 5384 Reusing old log C:\Users\rjxas\AppData\Local\Temp\flutter_tools.fea4e0b9\flutter_tools_chrome_device.44587828\Default\EdgeCoupons/coupons_data.db/000039.log 
-2026/09/30-17:03:57.785 5384 Delete type=0 #4
-2026/09/30-17:03:57.785 5384 Delete type=0 #7
-2026/09/30-17:03:57.785 5384 Delete type=2 #8
-2026/09/30-17:03:57.785 5384 Delete type=0 #10
-2026/09/30-17:03:57.785 5384 Delete type=2 #11
-2026/09/30-17:03:57.785 5384 Delete type=0 #13
-2026/09/30-17:03:57.785 5384 Delete type=2 #14
-2026/09/30-17:03:57.876 5384 Delete type=0 #16
-2026/09/30-17:03:58.000 5384 Delete type=2 #17
-2026/09/30-17:03:58.031 5384 Delete type=0 #19
-2026/09/30-17:03:58.032 5384 Delete type=2 #21
-2026/09/30-17:03:58.032 5384 Delete type=0 #23
-2026/09/30-17:03:58.032 5384 Delete type=2 #24
-2026/09/30-17:03:58.032 5384 Delete type=0 #26
-2026/09/30-17:03:58.047 5384 Delete type=2 #27
-2026/09/30-17:03:58.187 5384 Delete type=0 #29
-2026/09/30-17:03:58.236 5384 Delete type=2 #30
-2026/09/30-17:03:58.238 5384 Delete type=0 #32
-2026/09/30-17:03:58.244 5384 Delete type=0 #36
-2026/09/30-17:06:20.597 3dd8 Level-0 table #43: started
-2026/09/30-17:06:20.601 3dd8 Level-0 table #43: 683444 bytes OK
-2026/09/30-17:06:20.603 3dd8 Delete type=0 #39
+2026/10/03-01:00:54.705 79a4 Reusing MANIFEST C:\Users\rjxas\AppData\Local\Temp\flutter_tools.6bc8c249\flutter_tools_chrome_device.178767f8\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/10/03-01:00:54.708 79a4 Recovering log #42
+2026/10/03-01:00:54.708 79a4 Reusing old log C:\Users\rjxas\AppData\Local\Temp\flutter_tools.6bc8c249\flutter_tools_chrome_device.178767f8\Default\EdgeCoupons/coupons_data.db/000042.log 
+2026/10/03-01:00:54.710 79a4 Delete type=0 #4
+2026/10/03-01:00:54.710 79a4 Delete type=0 #7
+2026/10/03-01:00:54.710 79a4 Delete type=2 #8
+2026/10/03-01:00:54.710 79a4 Delete type=0 #10
+2026/10/03-01:00:54.710 79a4 Delete type=2 #11
+2026/10/03-01:00:54.710 79a4 Delete type=0 #13
+2026/10/03-01:00:54.710 79a4 Delete type=2 #14
+2026/10/03-01:00:54.735 79a4 Delete type=0 #16
+2026/10/03-01:00:54.735 79a4 Delete type=2 #17
+2026/10/03-01:00:54.736 79a4 Delete type=0 #19
+2026/10/03-01:00:54.736 79a4 Delete type=2 #21
+2026/10/03-01:00:54.736 79a4 Delete type=0 #23
+2026/10/03-01:00:54.736 79a4 Delete type=2 #24
+2026/10/03-01:00:54.736 79a4 Delete type=0 #26
+2026/10/03-01:00:54.736 79a4 Delete type=2 #27
+2026/10/03-01:00:54.737 79a4 Delete type=0 #29
+2026/10/03-01:00:54.739 79a4 Delete type=2 #30
+2026/10/03-01:00:54.739 79a4 Delete type=0 #32
+2026/10/03-01:00:54.739 79a4 Delete type=0 #36
+2026/10/03-01:00:54.740 79a4 Delete type=0 #39

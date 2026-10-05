@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -387,8 +388,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             views.setTextViewText(R.id.widget_class_time, "${currentClass.startTime} – ${currentClass.endTime}")
 
                             // Countdown: "Ends in Xm"
-                            val remainingMins = (currentClass.endMinutes - nowMinutes).coerceAtLeast(0)
-                            views.setTextViewText(R.id.widget_countdown, "Ends in ${formatDuration(remainingMins)}")
+                            setCountdown(views, currentClass.endMinutes, "Ends in")
                             views.setTextColor(R.id.widget_countdown, Color.parseColor("#22C55E"))
                             views.setViewVisibility(R.id.widget_countdown_container, View.VISIBLE)
 
@@ -409,8 +409,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             views.setTextViewText(R.id.widget_class_time, "${nextClass.startTime} – ${nextClass.endTime}")
 
                             // Countdown: "Starts in Xm"
-                            val untilStartMins = (nextClass.startMinutes - nowMinutes).coerceAtLeast(0)
-                            views.setTextViewText(R.id.widget_countdown, "Starts in ${formatDuration(untilStartMins)}")
+                            setCountdown(views, nextClass.startMinutes, "Starts in")
                             views.setTextColor(R.id.widget_countdown, Color.parseColor("#A78BFA"))
                             views.setViewVisibility(R.id.widget_countdown_container, View.VISIBLE)
 
@@ -555,6 +554,35 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                 h > 0 && m > 0 -> "${h}h ${m}m"
                 h > 0 -> "${h}h"
                 else -> "${m}m"
+            }
+        }
+
+        private fun setCountdown(views: RemoteViews, targetMinute: Int, prefix: String) {
+            val target = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, targetMinute / 60)
+                set(Calendar.MINUTE, targetMinute % 60)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val elapsedRealtimeTarget = SystemClock.elapsedRealtime() +
+                    (target.timeInMillis - System.currentTimeMillis())
+                views.setChronometer(
+                    R.id.widget_countdown,
+                    elapsedRealtimeTarget,
+                    "$prefix %s",
+                    true
+                )
+                views.setChronometerCountDown(R.id.widget_countdown, true)
+            } else {
+                val remainingMinutes = ((target.timeInMillis - System.currentTimeMillis()) / 60000L)
+                    .toInt()
+                    .coerceAtLeast(0)
+                views.setTextViewText(
+                    R.id.widget_countdown,
+                    "$prefix ${formatDuration(remainingMinutes)}"
+                )
             }
         }
 

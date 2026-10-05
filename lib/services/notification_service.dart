@@ -585,19 +585,26 @@ class NotificationService {
 
   /// Schedules recurring school class timetable notifications.
   /// Generates dedicated alarms for each weekday in `schoolClass.daysOfWeek` (1..7).
-  Future<void> scheduleSchoolClassNotification(SchoolClass schoolClass) async {
-    if (kIsWeb || schoolClass.daysOfWeek.isEmpty) return;
+  Future<bool> scheduleSchoolClassNotification(SchoolClass schoolClass) async {
+    if (kIsWeb) return true;
+    final scheduledDays = schoolClass.daysOfWeek
+        .toSet()
+        .where((day) => day >= 1 && day <= 7)
+        .toSet();
+    if (scheduledDays.isEmpty) return false;
 
-    final now = DateTime.now();
-
-    // Cancel all 7 potential day alarms for this class first
-    for (int day = 1; day <= 7; day++) {
-      await cancelNotification(_idFromUuid('${schoolClass.id}_$day'));
+    // Do not remove working alarms if Android notification access was revoked.
+    // The caller can then tell the user that the updated schedule is not armed.
+    if (!await isNotificationPermissionGranted()) {
+      debugPrint(
+        'Cannot reschedule school class ${schoolClass.id}: notifications disabled',
+      );
+      return false;
     }
 
-    for (final dayOfWeek in schoolClass.daysOfWeek) {
-      if (dayOfWeek < 1 || dayOfWeek > 7) continue;
-
+    final now = DateTime.now();
+    var allScheduled = true;
+    for (final dayOfWeek in scheduledDays) {
       // Calculate days until the next occurrence of dayOfWeek (1=Mon ... 7=Sun)
       int daysUntil = (dayOfWeek - now.weekday) % 7;
       if (daysUntil < 0) daysUntil += 7;
@@ -612,19 +619,24 @@ class NotificationService {
         schoolClass.reminderBefore,
       );
 
-      // If today's reminder time has already passed, schedule for next week
+      // If the early reminder window has passed but class has not started,
+      // notify at class time rather than silently skipping this week's class.
       if (notifyAt.isBefore(now)) {
-        targetDate = targetDate.add(const Duration(days: 7));
-        classStartTime = _parseTimeOnDate(targetDate, schoolClass.startTime);
-        notifyAt = _applyReminderBefore(
-          classStartTime,
-          schoolClass.reminderBefore,
-        );
+        if (classStartTime.isAfter(now)) {
+          notifyAt = classStartTime;
+        } else {
+          targetDate = targetDate.add(const Duration(days: 7));
+          classStartTime = _parseTimeOnDate(targetDate, schoolClass.startTime);
+          notifyAt = _applyReminderBefore(
+            classStartTime,
+            schoolClass.reminderBefore,
+          );
+        }
       }
 
       final id = _idFromUuid('${schoolClass.id}_$dayOfWeek');
 
-      await scheduleNotification(
+      final scheduled = await scheduleNotification(
         id: id,
         title: 'Class Starting: ${schoolClass.subject}',
         body:
@@ -636,7 +648,19 @@ class NotificationService {
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
         payload: 'school_class:${schoolClass.id}',
       );
+      allScheduled = allScheduled && scheduled;
     }
+
+    if (!allScheduled) return false;
+
+    // Keep alarms for removed weekdays until all replacement alarms succeeded.
+    for (int day = 1; day <= 7; day++) {
+      if (!scheduledDays.contains(day)) {
+        await cancelNotification(_idFromUuid('${schoolClass.id}_$day'));
+      }
+    }
+
+    return true;
   }
 
   /// Schedules a one-time bill due date notification for the current occurrence.
