@@ -5,11 +5,13 @@ import '../../models/app_models.dart';
 import '../../services/hive_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/widget_service.dart';
-import '../../services/pet_service.dart';
+import '../../services/reminder_completion_service.dart';
+import 'reminder_history_screen.dart';
 import '../../widgets/ai_account_dialog.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/app_status_badge.dart';
 import '../../widgets/reminder_dialog.dart';
 import '../../widgets/school_class_dialog.dart';
 
@@ -77,11 +79,13 @@ class _RemindersScreenState extends State<RemindersScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _hive.remindersChangedNotifier.addListener(_loadReminders);
     _loadReminders();
   }
 
   @override
   void dispose() {
+    _hive.remindersChangedNotifier.removeListener(_loadReminders);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -288,6 +292,17 @@ class _RemindersScreenState extends State<RemindersScreen>
         ),
         actions: [
           IconButton(
+            tooltip: 'Completion History',
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ReminderHistoryScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             tooltip: _hideSchoolSchedule
                 ? 'Show school schedule in Calendar and Reminders'
                 : 'Hide school schedule in Calendar and Reminders',
@@ -461,6 +476,24 @@ class _RemindersScreenState extends State<RemindersScreen>
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final e = filtered[index];
+                          final now = DateTime.now();
+                          final dueAt = _parseEntryDateTime(e.date, e.time);
+                          final isOverdue = !e.isCompleted && dueAt.isBefore(now);
+                          final isToday = DateUtils.isSameDay(e.date, now);
+                          final statusLabel = e.isCompleted
+                              ? 'Completed'
+                              : isOverdue
+                              ? 'Overdue'
+                              : isToday
+                              ? 'Today'
+                              : 'Upcoming';
+                          final statusColor = e.isCompleted
+                              ? theme.colorScheme.secondary
+                              : isOverdue
+                              ? theme.colorScheme.error
+                              : isToday
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant;
                           return AnimationConfiguration.staggeredList(
                             position: index,
                             duration: const Duration(milliseconds: 375),
@@ -568,17 +601,33 @@ class _RemindersScreenState extends State<RemindersScreen>
                                           ],
                                         ),
                                         subtitle: Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 4.0,
-                                          ),
-                                          child: Text(
-                                            e.subtitle,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: isDark
-                                                  ? Colors.grey.shade400
-                                                  : Colors.grey.shade600,
-                                            ),
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              AppStatusBadge(
+                                                label: statusLabel,
+                                                color: statusColor,
+                                                icon: e.isCompleted
+                                                    ? Icons.check_circle_outline
+                                                    : isOverdue
+                                                    ? Icons.error_outline
+                                                    : Icons.schedule_outlined,
+                                              ),
+                                              const SizedBox(height: 5),
+                                              Text(
+                                                e.subtitle,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isDark
+                                                      ? theme.colorScheme
+                                                            .onSurfaceVariant
+                                                      : theme.colorScheme
+                                                            .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                         trailing: Row(
@@ -663,66 +712,16 @@ class _RemindersScreenState extends State<RemindersScreen>
     bool completed,
   ) async {
     if (entry.sourceType == ReminderSourceType.general) {
-      // General reminder: simple completed toggle.
-      final r = (entry.originalObject as Reminder).copyWith(
-        completed: completed,
-      );
-      await _hive.saveReminder(r);
+      final r = entry.originalObject as Reminder;
       if (completed) {
-        PetService.instance.onReminderCompleted(r);
-        await NotificationService.instance.cancelNotificationForId(r.id);
-      } else {
-        // Attempt to reschedule — this silently skips if the date is in the past.
-        await NotificationService.instance.scheduleReminderNotification(r);
-
-        // Warn the user if the reminder time has already passed so they know
-        // to update the date (the notification won't fire for a past one-time reminder).
-        final parts = r.time.split(':');
-        final hour = int.tryParse(parts[0]) ?? 9;
-        final minute = parts.length > 1
-            ? (int.tryParse(parts[1].replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
-            : 0;
-        final notifyAt = DateTime(
-          r.date.year,
-          r.date.month,
-          r.date.day,
-          hour,
-          minute,
-        );
-        if (notifyAt.isBefore(DateTime.now()) &&
-            r.repeat.toLowerCase() == 'none') {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Reminder date is in the past — update it so the notification fires.',
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: Colors.orange.shade700,
-                duration: const Duration(seconds: 4),
-                action: SnackBarAction(
-                  label: 'Edit',
-                  textColor: Colors.white,
-                  onPressed: () {
-                    // Re-use the existing open-edit flow via entry
-                    _openEditDialog(entry);
-                  },
-                ),
-              ),
-            );
-          }
+        final success = await ReminderCompletionService.instance
+            .confirmAndCompleteReminder(context, r);
+        if (!success) {
+          await _loadReminders();
+          return;
         }
+      } else {
+        await ReminderCompletionService.instance.uncompleteReminder(r);
       }
       await _loadReminders();
       return;

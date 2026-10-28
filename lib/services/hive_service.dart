@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/app_models.dart';
+import '../models/diary_models.dart';
 import '../models/study_models.dart';
 import '../models/pet_models.dart';
 
@@ -10,9 +11,15 @@ class HiveService {
   HiveService._internal();
 
   // Data version for migrations
-  static const int currentDataVersion = 8;
+  static const int currentDataVersion = 9;
+
+  final ValueNotifier<int> remindersChangedNotifier = ValueNotifier<int>(0);
+  void notifyRemindersChanged() {
+    remindersChangedNotifier.value++;
+  }
 
   Box<String>? _remindersBox;
+  Box<String>? _reminderHistoryBox;
   Box<String>? _schoolClassesBox;
   Box<String>? _aiAccountsBox;
   Box<String>? _userAccountsBox;
@@ -21,6 +28,9 @@ class HiveService {
   Box<String>? _suppliersBox;
   Box<String>? _settingsBox;
   Box<String>? _birthdaysBox;
+  Box<String>? _diaryEntriesBox;
+  Box<String>? _diaryEntryDatesBox;
+  Box<String>? _notesBox;
   Box<String>? _studyMethodsBox;
   Box<String>? _studyHistoryBox;
   Box<String>? _studyTimerBox;
@@ -35,6 +45,7 @@ class HiveService {
     await Hive.initFlutter();
 
     _remindersBox = await Hive.openBox<String>('reminders');
+    _reminderHistoryBox = await Hive.openBox<String>('reminder_history');
     _schoolClassesBox = await Hive.openBox<String>('school_classes');
     _aiAccountsBox = await Hive.openBox<String>('ai_accounts');
     _userAccountsBox = await Hive.openBox<String>('user_accounts');
@@ -43,6 +54,9 @@ class HiveService {
     _suppliersBox = await Hive.openBox<String>('suppliers');
     _settingsBox = await Hive.openBox<String>('settings');
     _birthdaysBox = await Hive.openBox<String>('birthdays');
+    _diaryEntriesBox = await Hive.openBox<String>('diary_entries');
+    _diaryEntryDatesBox = await Hive.openBox<String>('diary_entry_dates');
+    _notesBox = await Hive.openBox<String>('notes');
     _studyMethodsBox = await Hive.openBox<String>('study_methods');
     _studyHistoryBox = await Hive.openBox<String>('study_history');
     _studyTimerBox = await Hive.openBox<String>('study_timer');
@@ -53,6 +67,7 @@ class HiveService {
 
     // Run migrations after all boxes are opened
     await _runMigrations();
+    await _initializeDiaryEntryDateIndex();
   }
 
   Future<void> _runMigrations() async {
@@ -170,12 +185,46 @@ class HiveService {
     await ensureInitialized();
     await _remindersBox!.put(reminder.id, jsonEncode(reminder.toJson()));
     await _remindersBox!.flush();
+    notifyRemindersChanged();
   }
 
   Future<void> deleteReminder(String id) async {
     await ensureInitialized();
     await _remindersBox!.delete(id);
     await _remindersBox!.flush();
+    notifyRemindersChanged();
+  }
+
+  // --- Reminder Completion History ---
+  List<ReminderHistoryRecord> getReminderHistory() {
+    if (_reminderHistoryBox == null) return [];
+    final records = _readRecords(
+      _reminderHistoryBox!,
+      ReminderHistoryRecord.fromJson,
+    );
+    records.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    return records;
+  }
+
+  Future<void> saveReminderHistoryRecord(ReminderHistoryRecord record) async {
+    await ensureInitialized();
+    await _reminderHistoryBox!.put(record.id, jsonEncode(record.toJson()));
+    await _reminderHistoryBox!.flush();
+    notifyRemindersChanged();
+  }
+
+  Future<void> deleteReminderHistoryRecord(String id) async {
+    await ensureInitialized();
+    await _reminderHistoryBox!.delete(id);
+    await _reminderHistoryBox!.flush();
+    notifyRemindersChanged();
+  }
+
+  Future<void> clearReminderHistory() async {
+    await ensureInitialized();
+    await _reminderHistoryBox!.clear();
+    await _reminderHistoryBox!.flush();
+    notifyRemindersChanged();
   }
 
   // --- School Classes ---
@@ -323,6 +372,154 @@ class HiveService {
     await ensureInitialized();
     await _birthdaysBox!.delete(id);
     await _birthdaysBox!.flush();
+  }
+
+  // --- Diary & Notes ---
+  List<DiaryEntry> getDiaryEntries() {
+    if (_diaryEntriesBox == null) return [];
+    return _readRecords(_diaryEntriesBox!, DiaryEntry.fromJson);
+  }
+
+  Map<DateTime, int> getDiaryEntryDateCounts() {
+    final dateBox = _diaryEntryDatesBox;
+    if (dateBox == null) return const {};
+    final counts = <DateTime, int>{};
+    for (final storedDate in dateBox.values) {
+      final date = DateTime.tryParse(storedDate);
+      if (date == null) {
+        debugPrint('HiveService: invalid diary date index value: $storedDate');
+        continue;
+      }
+      final localDate = DateTime(date.year, date.month, date.day);
+      counts.update(localDate, (count) => count + 1, ifAbsent: () => 1);
+    }
+    return counts;
+  }
+
+  List<DiaryEntry> getDiaryEntriesForDate(DateTime date) {
+    final entriesBox = _diaryEntriesBox;
+    final datesBox = _diaryEntryDatesBox;
+    if (entriesBox == null || datesBox == null) return [];
+
+    final dateValue = _diaryDateIndexValue(date);
+    final entries = <DiaryEntry>[];
+    for (final record in datesBox.toMap().entries) {
+      if (record.value != dateValue) continue;
+      final raw = entriesBox.get(record.key);
+      if (raw == null) continue;
+      try {
+        entries.add(
+          DiaryEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>),
+        );
+      } catch (error) {
+        debugPrint('Skipping invalid diary entry ${record.key}: $error');
+      }
+    }
+    return entries;
+  }
+
+  Future<void> saveDiaryEntry(DiaryEntry entry) async {
+    await ensureInitialized();
+    await saveStoredDiaryEntry(entry.id, entry.toStoredJson());
+  }
+
+  Future<void> saveStoredDiaryEntry(
+    String id,
+    Map<String, dynamic> storedData,
+  ) async {
+    await ensureInitialized();
+    await _diaryEntriesBox!.put(id, jsonEncode(storedData));
+    await _updateDiaryEntryDateIndex(id, storedData);
+    await _diaryEntriesBox!.flush();
+  }
+
+  Future<void> deleteDiaryEntry(String id) async {
+    await ensureInitialized();
+    await _diaryEntriesBox!.delete(id);
+    await _diaryEntryDatesBox!.delete(id);
+    await _diaryEntryDatesBox!.flush();
+    await _diaryEntriesBox!.flush();
+  }
+
+  Future<void> _initializeDiaryEntryDateIndex() async {
+    final initialized = _settingsBox!.get('diary_date_index_initialized');
+    if (initialized == 'true') return;
+
+    for (final key in _diaryEntriesBox!.keys) {
+      final raw = _diaryEntriesBox!.get(key);
+      if (raw == null) continue;
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is! Map<String, dynamic>) {
+          debugPrint('HiveService: diary entry $key is not a JSON object');
+          continue;
+        }
+        final rawDate = decoded['createdAt'];
+        final date = rawDate is String ? DateTime.tryParse(rawDate) : null;
+        if (date == null) {
+          debugPrint(
+            'HiveService: diary entry $key has no valid creation date',
+          );
+          continue;
+        }
+        await _diaryEntryDatesBox!.put(
+          key.toString(),
+          _diaryDateIndexValue(date),
+        );
+      } catch (error) {
+        debugPrint('HiveService: skipping diary date index for $key: $error');
+      }
+    }
+    await _diaryEntryDatesBox!.flush();
+    await _settingsBox!.put('diary_date_index_initialized', 'true');
+    await _settingsBox!.flush();
+  }
+
+  Future<void> _updateDiaryEntryDateIndex(
+    String id,
+    Map<String, dynamic> storedData,
+  ) async {
+    final rawDate = storedData['createdAt'];
+    final date = rawDate is String ? DateTime.tryParse(rawDate) : null;
+    if (date == null) {
+      throw FormatException('Diary entry $id has no valid creation date');
+    }
+    await _diaryEntryDatesBox!.put(id, _diaryDateIndexValue(date));
+    await _diaryEntryDatesBox!.flush();
+  }
+
+  String _diaryDateIndexValue(DateTime date) {
+    final localDate = date.toLocal();
+    final year = localDate.year.toString().padLeft(4, '0');
+    final month = localDate.month.toString().padLeft(2, '0');
+    final day = localDate.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  List<NotebookNote> getNotes() {
+    if (_notesBox == null) return [];
+    return _readRecords(_notesBox!, NotebookNote.fromJson);
+  }
+
+  Future<void> saveNote(NotebookNote note) async {
+    await ensureInitialized();
+    await _notesBox!.put(note.id, jsonEncode(note.toStoredJson()));
+    await _notesBox!.flush();
+  }
+
+  Future<void> saveStoredNote(
+    String id,
+    Map<String, dynamic> storedData,
+  ) async {
+    await ensureInitialized();
+    await _notesBox!.put(id, jsonEncode(storedData));
+    await _notesBox!.flush();
+  }
+
+  Future<void> deleteNote(String id) async {
+    await ensureInitialized();
+    await _notesBox!.delete(id);
+    await _notesBox!.flush();
   }
 
   // --- Settings ---
@@ -577,6 +774,7 @@ class HiveService {
   Future<void> clearAll() async {
     await ensureInitialized();
     await _remindersBox?.clear();
+    await _reminderHistoryBox?.clear();
     await _schoolClassesBox?.clear();
     await _aiAccountsBox?.clear();
     await _userAccountsBox?.clear();
@@ -585,6 +783,9 @@ class HiveService {
     await _suppliersBox?.clear();
     await _settingsBox?.clear();
     await _birthdaysBox?.clear();
+    await _diaryEntriesBox?.clear();
+    await _diaryEntryDatesBox?.clear();
+    await _notesBox?.clear();
     await _studyMethodsBox?.clear();
     await _studyHistoryBox?.clear();
     await _studyTimerBox?.clear();
@@ -592,6 +793,7 @@ class HiveService {
     await _studySubjectsBox?.clear();
     await _petBox?.clear();
     await _remindersBox?.flush();
+    await _reminderHistoryBox?.flush();
     await _schoolClassesBox?.flush();
     await _aiAccountsBox?.flush();
     await _userAccountsBox?.flush();
@@ -600,6 +802,9 @@ class HiveService {
     await _suppliersBox?.flush();
     await _settingsBox?.flush();
     await _birthdaysBox?.flush();
+    await _diaryEntriesBox?.flush();
+    await _diaryEntryDatesBox?.flush();
+    await _notesBox?.flush();
     await _studyMethodsBox?.flush();
     await _studyHistoryBox?.flush();
     await _studyTimerBox?.flush();

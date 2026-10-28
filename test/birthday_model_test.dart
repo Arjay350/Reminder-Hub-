@@ -134,7 +134,7 @@ void main() {
     expect(find.text('October 15, 2026'), findsOneWidget);
   });
 
-  testWidgets('birthday is not offered in Quick Add', (tester) async {
+  testWidgets('birthday is offered in Quick Add', (tester) async {
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -144,6 +144,6 @@ void main() {
       const MaterialApp(home: Scaffold(body: QuickAddModal())),
     );
 
-    expect(find.text('Add Birthday'), findsNothing);
+    expect(find.text('Add Birthday'), findsOneWidget);
   });
 }

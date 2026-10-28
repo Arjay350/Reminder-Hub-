@@ -40,7 +40,7 @@ class WhatsNewRegistry {
       title: 'What\'s New',
       appTitle: 'Reminder Hub 1.4.0',
       subtitle:
-          'Dynamic Pet Companion, improved AI resets tracking, and bug fixes.',
+          'Dynamic Pet Companion, Google Forms feedback, and bug fixes.',
       items: [
         WhatsNewItem(
           icon: Icons.pets_rounded,
@@ -83,6 +83,20 @@ class WhatsNewRegistry {
           title: 'AI Resets & Cooldown Improvements',
           description:
               'Track both Active and Cooldown AI accounts directly in the AI Resets home section with dedicated provider management.',
+        ),
+        WhatsNewItem(
+          icon: Icons.cloud_sync_rounded,
+          iconColor: Color(0xFF3B82F6),
+          title: 'Google Drive Cloud Backup',
+          description:
+              'Connect your Google account to back up your reminders and app data to Google Drive, restore a backup when needed, or enable automatic cloud backups in Settings.',
+        ),
+        WhatsNewItem(
+          icon: Icons.feedback_outlined,
+          iconColor: Color(0xFF14B8A6),
+          title: 'Send Feedback',
+          description:
+              'Open the ReminderHub Google Form from Settings to report bugs and suggest improvements. Only information you choose to submit is sent; personal app data is not attached.',
         ),
         WhatsNewItem(
           icon: Icons.build_circle_rounded,

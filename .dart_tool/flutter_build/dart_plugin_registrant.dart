@@ -8,11 +8,13 @@
 import 'dart:io'; // flutter_ignore: dart_io_import.
 import 'package:android_file_picker/android_file_picker.dart' as android_file_picker;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart' as flutter_local_notifications;
+import 'package:google_sign_in_android/google_sign_in_android.dart' as google_sign_in_android;
 import 'package:local_auth_android/local_auth_android.dart' as local_auth_android;
 import 'package:path_provider_android/path_provider_android.dart' as path_provider_android;
 import 'package:url_launcher_android/url_launcher_android.dart' as url_launcher_android;
 import 'package:file_picker_darwin/file_picker_darwin.dart' as file_picker_darwin;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart' as flutter_local_notifications;
+import 'package:google_sign_in_ios/google_sign_in_ios.dart' as google_sign_in_ios;
 import 'package:local_auth_darwin/local_auth_darwin.dart' as local_auth_darwin;
 import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
 import 'package:url_launcher_ios/url_launcher_ios.dart' as url_launcher_ios;
@@ -23,6 +25,7 @@ import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:url_launcher_linux/url_launcher_linux.dart' as url_launcher_linux;
 import 'package:file_picker_darwin/file_picker_darwin.dart' as file_picker_darwin;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart' as flutter_local_notifications;
+import 'package:google_sign_in_ios/google_sign_in_ios.dart' as google_sign_in_ios;
 import 'package:local_auth_darwin/local_auth_darwin.dart' as local_auth_darwin;
 import 'package:path_provider_foundation/path_provider_foundation.dart' as path_provider_foundation;
 import 'package:url_launcher_macos/url_launcher_macos.dart' as url_launcher_macos;
@@ -53,6 +56,15 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`flutter_local_notifications` threw an error: $err. '
+          'The app may not function as expected until you remove this plugin from pubspec.yaml'
+        );
+      }
+
+      try {
+        google_sign_in_android.GoogleSignInAndroid.registerWith();
+      } catch (err) {
+        print(
+          '`google_sign_in_android` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }
@@ -99,6 +111,15 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`flutter_local_notifications` threw an error: $err. '
+          'The app may not function as expected until you remove this plugin from pubspec.yaml'
+        );
+      }
+
+      try {
+        google_sign_in_ios.GoogleSignInIOS.registerWith();
+      } catch (err) {
+        print(
+          '`google_sign_in_ios` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }
@@ -191,6 +212,15 @@ class _PluginRegistrant {
       } catch (err) {
         print(
           '`flutter_local_notifications` threw an error: $err. '
+          'The app may not function as expected until you remove this plugin from pubspec.yaml'
+        );
+      }
+
+      try {
+        google_sign_in_ios.GoogleSignInIOS.registerWith();
+      } catch (err) {
+        print(
+          '`google_sign_in_ios` threw an error: $err. '
           'The app may not function as expected until you remove this plugin from pubspec.yaml'
         );
       }

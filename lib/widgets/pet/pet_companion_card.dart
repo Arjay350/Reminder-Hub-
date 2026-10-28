@@ -6,11 +6,7 @@ import 'pet_dialog.dart';
 import 'pet_mood_badge.dart';
 
 class PetCompanionCard extends StatelessWidget {
-  const PetCompanionCard({
-    super.key,
-    this.service,
-    this.onTapCard,
-  });
+  const PetCompanionCard({super.key, this.service, this.onTapCard});
 
   final PetService? service;
   final VoidCallback? onTapCard;
@@ -54,38 +50,25 @@ class PetCompanionCard extends StatelessWidget {
                 );
               },
               child: Ink(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [
-                            const Color(0xFF1E1B4B).withValues(alpha: 0.70),
-                            const Color(0xFF0F172A).withValues(alpha: 0.90),
-                          ]
-                        : [
-                            const Color(0xFFEEF2FF),
-                            const Color(0xFFF8FAFC),
-                          ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: isDark
+                      ? theme.colorScheme.surfaceContainerHighest
+                      : const Color(0xFFF0F1FF),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.35 : 0.20),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.14 : 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+                    color: theme.colorScheme.primary.withValues(
+                      alpha: isDark ? 0.32 : 0.18,
                     ),
-                  ],
+                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                      // Top Row: Info column & Interactive Pet
+                    // Top Row: Info column & Interactive Pet
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -107,7 +90,9 @@ class PetCompanionCard extends StatelessWidget {
                                       fontWeight: FontWeight.w800,
                                       fontSize: 16.5,
                                       letterSpacing: -0.2,
-                                      color: isDark ? Colors.white : const Color(0xFF1E1B4B),
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF1E1B4B),
                                     ),
                                   ),
                                   // Level Pill
@@ -117,10 +102,14 @@ class PetCompanionCard extends StatelessWidget {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF6366F1).withValues(alpha: 0.14),
+                                      color: const Color(
+                                        0xFF6366F1,
+                                      ).withValues(alpha: 0.14),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: const Color(0xFF6366F1).withValues(alpha: 0.32),
+                                        color: const Color(
+                                          0xFF6366F1,
+                                        ).withValues(alpha: 0.32),
                                         width: 0.9,
                                       ),
                                     ),
@@ -152,10 +141,14 @@ class PetCompanionCard extends StatelessWidget {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: hungerColor.withValues(alpha: 0.14),
+                                      color: hungerColor.withValues(
+                                        alpha: 0.14,
+                                      ),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: hungerColor.withValues(alpha: 0.32),
+                                        color: hungerColor.withValues(
+                                          alpha: 0.32,
+                                        ),
                                         width: 0.9,
                                       ),
                                     ),
@@ -186,10 +179,14 @@ class PetCompanionCard extends StatelessWidget {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: conditionColor.withValues(alpha: 0.14),
+                                      color: conditionColor.withValues(
+                                        alpha: 0.14,
+                                      ),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: conditionColor.withValues(alpha: 0.32),
+                                        color: conditionColor.withValues(
+                                          alpha: 0.32,
+                                        ),
                                         width: 0.9,
                                       ),
                                     ),
@@ -221,10 +218,14 @@ class PetCompanionCard extends StatelessWidget {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF0D9488).withValues(alpha: 0.16),
+                                        color: const Color(
+                                          0xFF0D9488,
+                                        ).withValues(alpha: 0.16),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: const Color(0xFF0D9488).withValues(alpha: 0.35),
+                                          color: const Color(
+                                            0xFF0D9488,
+                                          ).withValues(alpha: 0.35),
                                           width: 0.9,
                                         ),
                                       ),
@@ -255,10 +256,14 @@ class PetCompanionCard extends StatelessWidget {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF59E0B).withValues(alpha: 0.16),
+                                        color: const Color(
+                                          0xFFF59E0B,
+                                        ).withValues(alpha: 0.16),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                                          color: const Color(
+                                            0xFFF59E0B,
+                                          ).withValues(alpha: 0.35),
                                           width: 0.9,
                                         ),
                                       ),
@@ -289,10 +294,14 @@ class PetCompanionCard extends StatelessWidget {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF8B5CF6).withValues(alpha: 0.16),
+                                        color: const Color(
+                                          0xFF8B5CF6,
+                                        ).withValues(alpha: 0.16),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.35),
+                                          color: const Color(
+                                            0xFF8B5CF6,
+                                          ).withValues(alpha: 0.35),
                                           width: 0.9,
                                         ),
                                       ),
@@ -333,32 +342,45 @@ class PetCompanionCard extends StatelessWidget {
                                         );
 
                                   return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 7,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: isDark
                                           ? Colors.white.withValues(alpha: 0.05)
-                                          : Colors.white.withValues(alpha: 0.85),
+                                          : Colors.white.withValues(
+                                              alpha: 0.85,
+                                            ),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.20 : 0.12),
+                                        color: const Color(0xFF6366F1)
+                                            .withValues(
+                                              alpha: isDark ? 0.20 : 0.12,
+                                            ),
                                         width: 0.8,
                                       ),
                                     ),
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       children: [
                                         Container(
                                           width: 5,
                                           height: 5,
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: const Color(0xFF6366F1).withValues(alpha: 0.85),
+                                            color: const Color(
+                                              0xFF6366F1,
+                                            ).withValues(alpha: 0.85),
                                           ),
                                         ),
                                         const SizedBox(width: 7),
                                         Expanded(
                                           child: AnimatedSwitcher(
-                                            duration: const Duration(milliseconds: 250),
+                                            duration: const Duration(
+                                              milliseconds: 250,
+                                            ),
                                             child: Text(
                                               textToDisplay,
                                               key: ValueKey(textToDisplay),
@@ -408,7 +430,10 @@ class PetCompanionCard extends StatelessWidget {
 
                     // Middle Section: Polished Custom Progress Bars
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 13,
+                        vertical: 11,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? Colors.black.withValues(alpha: 0.32)
@@ -422,7 +447,9 @@ class PetCompanionCard extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.15 : 0.03,
+                            ),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -434,7 +461,8 @@ class PetCompanionCard extends StatelessWidget {
                           _buildProgressBar(
                             icon: Icons.restaurant_rounded,
                             label: 'HUNGER SATIETY',
-                            valueText: '${prefs.hunger.round()}% (${hungerState.displayName})',
+                            valueText:
+                                '${prefs.hunger.round()}% (${hungerState.displayName})',
                             progress: prefs.hungerProgress,
                             accentColor: hungerColor,
                             fillGradient: LinearGradient(
@@ -475,7 +503,10 @@ class PetCompanionCard extends StatelessWidget {
                             label: 'BODY SHAPE',
                             valueText:
                                 '${prefs.bodyCondition.displayName} (${prefs.bodyConditionScore.round()}/100)',
-                            progress: (prefs.bodyConditionScore / 100.0).clamp(0.0, 1.0),
+                            progress: (prefs.bodyConditionScore / 100.0).clamp(
+                              0.0,
+                              1.0,
+                            ),
                             accentColor: conditionColor,
                             fillGradient: LinearGradient(
                               colors: [
@@ -496,17 +527,26 @@ class PetCompanionCard extends StatelessWidget {
                       children: [
                         // Food count pill
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6.5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6.5,
+                          ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.22 : 0.15),
-                                const Color(0xFFD97706).withValues(alpha: isDark ? 0.16 : 0.08),
+                                const Color(
+                                  0xFFF59E0B,
+                                ).withValues(alpha: isDark ? 0.22 : 0.15),
+                                const Color(
+                                  0xFFD97706,
+                                ).withValues(alpha: isDark ? 0.16 : 0.08),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.45 : 0.35),
+                              color: const Color(
+                                0xFFF59E0B,
+                              ).withValues(alpha: isDark ? 0.45 : 0.35),
                               width: 1,
                             ),
                           ),
@@ -542,18 +582,29 @@ class PetCompanionCard extends StatelessWidget {
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Ink(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6.5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6.5,
+                              ),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: prefs.foodInventory > 0
-                                      ? const [Color(0xFF10B981), Color(0xFF059669)]
-                                      : [Colors.grey.shade600, Colors.grey.shade700],
+                                      ? const [
+                                          Color(0xFF10B981),
+                                          Color(0xFF059669),
+                                        ]
+                                      : [
+                                          Colors.grey.shade600,
+                                          Colors.grey.shade700,
+                                        ],
                                 ),
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   if (prefs.foodInventory > 0)
                                     BoxShadow(
-                                      color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                      color: const Color(
+                                        0xFF10B981,
+                                      ).withValues(alpha: 0.35),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
@@ -579,9 +630,14 @@ class PetCompanionCard extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 5),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1.5),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4.5,
+                                      vertical: 1.5,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.25),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.25,
+                                      ),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Text(
@@ -608,7 +664,9 @@ class PetCompanionCard extends StatelessWidget {
                             Icon(
                               Icons.touch_app_rounded,
                               size: 13,
-                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                              color: isDark
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade500,
                             ),
                             const SizedBox(width: 3.5),
                             Text(
@@ -616,7 +674,9 @@ class PetCompanionCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -696,7 +756,10 @@ class PetCompanionCard extends StatelessWidget {
               return Align(
                 alignment: Alignment.centerLeft,
                 child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
+                  tween: Tween<double>(
+                    begin: 0.0,
+                    end: progress.clamp(0.0, 1.0),
+                  ),
                   duration: const Duration(milliseconds: 550),
                   curve: Curves.easeOutCubic,
                   builder: (context, animValue, _) {

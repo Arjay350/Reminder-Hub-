@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/study_models.dart';
 import '../../services/study_service.dart';
 import '../../services/pet_service.dart';
+import '../diary_notes/notebook_editor_screen.dart';
 
 class StudyDashboardScreen extends StatefulWidget {
   const StudyDashboardScreen({super.key});
@@ -765,7 +766,62 @@ class _StudyTimerScreenState extends State<StudyTimerScreen> {
       subject: record.subject,
     );
     if (!mounted) return;
+    await _offerStudyTakeaway(record.subject);
+    if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  Future<void> _offerStudyTakeaway(String subject) async {
+    final controller = TextEditingController();
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Save a study takeaway?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Capture something useful from your $subject session.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'What did you learn?',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'skip'),
+            child: const Text('Skip'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'diary'),
+            child: const Text('Write Takeaway'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, 'note'),
+            child: const Text('Save as Study Note'),
+          ),
+        ],
+      ),
+    );
+    final takeaway = controller.text.trim();
+    controller.dispose();
+    if (!mounted || action == null || action == 'skip') return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NotebookEditorScreen(
+          isDiary: action == 'diary',
+          initialTitle: action == 'diary' ? 'Study takeaway' : '$subject Notes',
+          initialContent: takeaway,
+          initialSubject: subject,
+        ),
+      ),
+    );
   }
 
   @override

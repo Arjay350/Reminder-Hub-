@@ -10,6 +10,7 @@ import '../../widgets/bill_dialog.dart';
 import '../../widgets/confirm_delete_dialog.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/app_status_badge.dart';
 
 class BillsScreen extends StatefulWidget {
   const BillsScreen({super.key});
@@ -75,25 +76,15 @@ class _BillsScreenState extends State<BillsScreen> {
       ),
       body: Column(
         children: [
-          // Total Unpaid Summary Banner - styled premium
+          // Summary highlight
           Container(
             width: double.infinity,
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF10B981), Color(0xFF047857)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -101,22 +92,21 @@ class _BillsScreenState extends State<BillsScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Total Upcoming Unpaid',
-                      style: TextStyle(
-                        color: Colors.white70,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       Formatters.formatCurrency(totalUnpaidAmount),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 26,
-                        letterSpacing: -0.5,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.4,
                       ),
                     ),
                   ],
@@ -124,12 +114,12 @@ class _BillsScreenState extends State<BillsScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: theme.colorScheme.secondary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.account_balance_wallet_rounded,
-                    color: Colors.white,
+                    color: theme.colorScheme.secondary,
                     size: 26,
                   ),
                 ),
@@ -294,29 +284,14 @@ class _BillsScreenState extends State<BillsScreen> {
                                                   ),
                                                 ),
                                               ),
-                                              AnimatedContainer(
-                                                duration: const Duration(
-                                                  milliseconds: 250,
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 3,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: urgencyColor
-                                                      .withValues(alpha: .12),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  urgencyLabel,
-                                                  style: TextStyle(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: urgencyColor,
-                                                  ),
-                                                ),
+                                              AppStatusBadge(
+                                                label: urgencyLabel,
+                                                color: urgencyColor,
+                                                icon: isPaid
+                                                    ? Icons.check_circle_outline
+                                                    : isOverdue
+                                                    ? Icons.error_outline
+                                                    : Icons.schedule_outlined,
                                               ),
                                             ],
                                           ),

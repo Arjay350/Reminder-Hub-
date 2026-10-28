@@ -9,12 +9,12 @@ import '../../services/hive_service.dart';
 import '../../services/gas_calculation_service.dart';
 import '../../services/timetable_calculation_service.dart';
 import '../../services/study_service.dart';
+import '../../services/reminder_completion_service.dart';
 import '../../widgets/secure_action_gate.dart';
 import '../../widgets/custom_card.dart';
+import '../../widgets/app_section_header.dart';
 import '../../widgets/reminder_dialog.dart';
 import '../../widgets/bill_dialog.dart';
-import '../../widgets/ai_account_dialog.dart';
-import '../../widgets/user_account_dialog.dart';
 import '../../widgets/gas_purchase_dialog.dart';
 import '../account_manager/account_manager_screen.dart';
 import '../ai_accounts/ai_accounts_screen.dart';
@@ -22,8 +22,9 @@ import '../gas_tracker/gas_tracker_screen.dart';
 import '../bills/bills_screen.dart';
 import '../school/school_hub_screen.dart';
 import '../school_schedule/school_schedule_screen.dart';
-import '../study/study_dashboard_screen.dart';
 import '../search/global_search_screen.dart';
+import '../diary_notes/diary_notes_screen.dart';
+import '../diary_notes/notebook_editor_screen.dart';
 import '../../widgets/quick_add_modal.dart';
 import '../../widgets/school_class_dialog.dart';
 import '../../widgets/whats_new_dialog.dart';
@@ -52,7 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<AIAccount> _aiAccounts = [];
   List<GasPurchase> _gasPurchases = [];
   List<Birthday> _birthdays = [];
-  int _todayFocusMinutes = 0;
   AppSettings? _settings;
   StudyTimerState? _activeStudyState;
 
@@ -60,15 +60,184 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _timetableUpdateTimer;
   bool _whatsNewPrompted = false;
 
+  static const Map<String, String> _dashboardSections = {
+    'quick_actions': 'Quick actions',
+    'today_classes': 'Today’s classes',
+    'household_gas': 'Household LPG status',
+  };
+
+  static const Map<String, String> _featuredDashboardSections = {
+    'school_overview': 'School at a glance',
+    'birthdays': 'Upcoming birthdays',
+    'upcoming_reminder': 'Up next reminder',
+    'pet': 'Pet companion',
+  };
+
+  bool _showDashboardSection(String id) =>
+      !(_settings?.hiddenDashboardSections.contains(id) ?? false);
+
+  Future<void> _editDashboard() async {
+    var hidden = List<String>.from(
+      _settings?.hiddenDashboardSections ?? const <String>[],
+    );
+    var order = List<String>.from(
+      _settings?.dashboardSectionOrder ??
+          AppSettings.defaultDashboardSectionOrder,
+    );
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              8,
+              20,
+              20 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * .78,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Edit dashboard',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose which sections appear on Home. Your changes are saved on this device.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Featured sections · drag to reorder',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: order.length,
+                      // ignore: deprecated_member_use
+                      onReorder: (oldIndex, newIndex) async {
+                        setSheetState(() {
+                          if (newIndex > oldIndex) newIndex--;
+                          final moved = order.removeAt(oldIndex);
+                          order.insert(newIndex, moved);
+                        });
+                        final updated = _hive.getSettings().copyWith(
+                          dashboardSectionOrder: List.unmodifiable(order),
+                        );
+                        await _hive.saveSettings(updated);
+                        if (mounted) setState(() => _settings = updated);
+                      },
+                      itemBuilder: (context, index) {
+                        final id = order[index];
+                        return ListTile(
+                          key: ValueKey('dashboard-order-$id'),
+                          contentPadding: EdgeInsets.zero,
+                          leading: ReorderableDragStartListener(
+                            index: index,
+                            child: const Icon(Icons.drag_handle),
+                          ),
+                          title: Text(_featuredDashboardSections[id] ?? id),
+                          trailing: Switch.adaptive(
+                            value: !hidden.contains(id),
+                            onChanged: (visible) async {
+                              setSheetState(() {
+                                if (visible) {
+                                  hidden.remove(id);
+                                } else if (!hidden.contains(id)) {
+                                  hidden.add(id);
+                                }
+                              });
+                              final updated = _hive.getSettings().copyWith(
+                                hiddenDashboardSections: List.unmodifiable(
+                                  hidden,
+                                ),
+                              );
+                              await _hive.saveSettings(updated);
+                              if (mounted) setState(() => _settings = updated);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    Text(
+                      'Other sections',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    for (final section in _dashboardSections.entries)
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(section.value),
+                        value: !hidden.contains(section.key),
+                        onChanged: (visible) async {
+                          setSheetState(() {
+                            if (visible) {
+                              hidden.remove(section.key);
+                            } else if (!hidden.contains(section.key)) {
+                              hidden.add(section.key);
+                            }
+                          });
+                          final current = _hive.getSettings();
+                          final updated = current.copyWith(
+                            hiddenDashboardSections: List.unmodifiable(hidden),
+                          );
+                          await _hive.saveSettings(updated);
+                          if (mounted) setState(() => _settings = updated);
+                        },
+                      ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () async {
+                          hidden = [];
+                          order = List<String>.from(
+                            AppSettings.defaultDashboardSectionOrder,
+                          );
+                          setSheetState(() {});
+                          final updated = _hive.getSettings().copyWith(
+                            hiddenDashboardSections: const [],
+                            dashboardSectionOrder:
+                                AppSettings.defaultDashboardSectionOrder,
+                          );
+                          await _hive.saveSettings(updated);
+                          if (mounted) setState(() => _settings = updated);
+                        },
+                        icon: const Icon(Icons.restart_alt),
+                        label: const Text('Reset to default'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _refreshData();
     _startTimetableTimer();
+    _hive.remindersChangedNotifier.addListener(_refreshData);
   }
 
   @override
   void dispose() {
+    _hive.remindersChangedNotifier.removeListener(_refreshData);
     _timetableUpdateTimer?.cancel();
     super.dispose();
   }
@@ -90,11 +259,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _dayStatus = status;
         _aiAccounts = _hive.getAIAccounts();
         _activeStudyState = StudyService.instance.getActiveTimerState();
-        final today = DateTime.now();
-        _todayFocusMinutes = StudyService.instance
-            .getStudyHistory()
-            .where((session) => Formatters.isSameDay(session.startedAt, today))
-            .fold(0, (total, session) => total + session.durationMinutes);
       });
 
       // Synchronize class schedule and study timer state with pet companion
@@ -135,13 +299,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _aiAccounts = _hive.getAIAccounts();
       _birthdays = _hive.getBirthdays();
       _activeStudyState = StudyService.instance.getActiveTimerState();
-      _todayFocusMinutes = StudyService.instance
-          .getStudyHistory()
-          .where(
-            (session) =>
-                Formatters.isSameDay(session.startedAt, DateTime.now()),
-          )
-          .fold(0, (total, session) => total + session.durationMinutes);
       _gasPurchases = _hive.getGasPurchases();
       _settings = settings;
     });
@@ -761,7 +918,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Colors.green,
+                  ),
+                  tooltip: 'Mark as complete',
+                  onPressed: () async {
+                    final done = await ReminderCompletionService.instance
+                        .confirmAndCompleteReminder(context, reminder);
+                    if (done) _refreshData();
+                  },
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -807,116 +976,6 @@ class _HomeScreenState extends State<HomeScreen> {
       reminder.date.day,
       hour,
       minute,
-    );
-  }
-
-  Widget _buildFocusPanel(BuildContext context) {
-    final state = _activeStudyState;
-    final theme = Theme.of(context);
-    final color = state == null
-        ? const Color(0xFF6366F1)
-        : studyPhaseColor(state.phase);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () => Navigator.of(context)
-            .push(
-              MaterialPageRoute(builder: (_) => const StudyDashboardScreen()),
-            )
-            .then((_) => _refreshData()),
-        child: Ink(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: color.withValues(alpha: .22)),
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 58,
-                height: 58,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: state == null || state.completed
-                          ? 0
-                          : (1 -
-                                    state.remainingSeconds /
-                                        (state.phase == StudyPhase.study
-                                            ? state
-                                                      .method
-                                                      .studyDurationMinutes *
-                                                  60
-                                            : state.phase ==
-                                                  StudyPhase.shortBreak
-                                            ? state
-                                                      .method
-                                                      .shortBreakDurationMinutes *
-                                                  60
-                                            : state
-                                                      .method
-                                                      .longBreakDurationMinutes *
-                                                  60))
-                                .clamp(0.0, 1.0),
-                      strokeWidth: 4,
-                      backgroundColor: color.withValues(alpha: .12),
-                      color: color,
-                    ),
-                    Icon(
-                      state?.isRunning == true
-                          ? Icons.bolt_rounded
-                          : Icons.self_improvement_rounded,
-                      color: color,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      state?.isRunning == true ? 'FOCUS IN PROGRESS' : 'FOCUS',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      state == null ? 'Ready to focus?' : state.subject,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      state == null
-                          ? '$_todayFocusMinutes min completed today'
-                          : '${formatStudyClock(state.remainingDuration)} left · ${buildStudyPhaseText(state.phase)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.arrow_forward_rounded, color: color),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -1099,34 +1158,29 @@ class _HomeScreenState extends State<HomeScreen> {
         _dayStatus ?? _timetableService.calculateDayStatus(_schoolClasses, now);
 
     final todayReminders = _reminders
-        .where((r) => Formatters.isSameDay(r.date, now))
+        .where((r) => !r.completed && Formatters.isSameDay(r.date, now))
         .toList();
-    final overdueReminders = _reminders
-        .where(
-          (r) =>
-              !r.completed &&
-              r.date.isBefore(now) &&
-              !Formatters.isSameDay(r.date, now),
-        )
-        .toList();
+    final overdueReminders =
+        _reminders
+            .where((r) => !r.completed && r.dueDateTime.isBefore(now))
+            .toList()
+          ..sort((a, b) => a.dueDateTime.compareTo(b.dueDateTime));
     final upcomingBills = _bills.where((b) => !b.paid).toList();
     final billsDueSoon = upcomingBills.where((bill) {
       final due = bill.getDisplayDueDate();
       return !due.isBefore(DateTime(now.year, now.month, now.day)) &&
           due.isBefore(DateTime(now.year, now.month, now.day + 8));
     }).length;
-    final pendingTodayReminders = todayReminders
-        .where((reminder) => !reminder.completed)
-        .length;
+    final pendingTodayReminders = todayReminders.length;
     final todayClassCount = dayStatus.classes.length;
     final futureReminders =
         _reminders
             .where(
               (reminder) =>
-                  !reminder.completed && _reminderDueAt(reminder).isAfter(now),
+                  !reminder.completed && reminder.dueDateTime.isAfter(now),
             )
             .toList()
-          ..sort((a, b) => _reminderDueAt(a).compareTo(_reminderDueAt(b)));
+          ..sort((a, b) => a.dueDateTime.compareTo(b.dueDateTime));
     final nextReminder = futureReminders.firstOrNull;
 
     final todayDay = DateTime(now.year, now.month, now.day);
@@ -1159,6 +1213,49 @@ class _HomeScreenState extends State<HomeScreen> {
         completedPurchases[0].purchaseDate,
       );
     }
+
+    final featuredDashboardWidgets = <String, Widget>{
+      'school_overview': Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your day at a glance',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildDashboardClassHero(context, dayStatus),
+        ],
+      ),
+      'birthdays': _buildUpcomingBirthdaysCard(context, _birthdays),
+      'upcoming_reminder': Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Up next',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton(
+                onPressed: () => widget.onNavigateTab?.call(2),
+                child: const Text('All reminders'),
+              ),
+            ],
+          ),
+          _buildUpcomingReminder(context, nextReminder),
+        ],
+      ),
+      'pet': const PetCompanionCard(),
+    };
+    final dashboardOrder =
+        _settings?.dashboardSectionOrder ??
+        AppSettings.defaultDashboardSectionOrder;
 
     return Scaffold(
       body: SafeArea(
@@ -1286,6 +1383,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       IconButton.filledTonal(
+                        tooltip: 'Search',
                         icon: const Icon(Icons.search),
                         onPressed: () {
                           Navigator.push(
@@ -1296,27 +1394,32 @@ class _HomeScreenState extends State<HomeScreen> {
                           ).then((_) => _refreshData());
                         },
                       ),
+                      const SizedBox(width: 4),
+                      IconButton.filledTonal(
+                        tooltip: 'Edit dashboard sections',
+                        icon: const Icon(Icons.tune),
+                        onPressed: _editDashboard,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Dynamic Local Pet Companion
-                  const PetCompanionCard(),
-
-                  const SizedBox(height: 18),
-                  _buildUpcomingBirthdaysCard(context, _birthdays),
-                  const SizedBox(height: 18),
-
-                  Text(
-                    'Your day at a glance',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -.5,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Text(
+                      'Here’s what needs your attention today.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  _buildDashboardClassHero(context, dayStatus),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 16),
+
+                  for (final id in dashboardOrder)
+                    if (_showDashboardSection(id) &&
+                        featuredDashboardWidgets.containsKey(id)) ...[
+                      featuredDashboardWidgets[id]!,
+                      const SizedBox(height: 22),
+                    ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1335,130 +1438,67 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = (constraints.maxWidth - 10) / 2;
-                      return Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          _overviewMetric(
-                            width: width,
-                            label: 'Classes today',
-                            value: '$todayClassCount',
-                            icon: Icons.school_outlined,
-                            color: const Color(0xFF14B8A6),
-                            onTap: () => Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const SchoolHubScreen(),
-                                  ),
-                                )
-                                .then((_) => _refreshData()),
-                          ),
-                          _overviewMetric(
-                            width: width,
-                            label: 'Bills due soon',
-                            value: '$billsDueSoon',
-                            icon: Icons.receipt_long_outlined,
-                            color: const Color(0xFFF59E0B),
-                            onTap: () => Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const BillsScreen(),
-                                  ),
-                                )
-                                .then((_) => _refreshData()),
-                          ),
-                          _overviewMetric(
-                            width: width,
-                            label: 'Reminders due',
-                            value: '$pendingTodayReminders',
-                            icon: Icons.notifications_active_outlined,
-                            color: const Color(0xFF6366F1),
-                            onTap: () => widget.onNavigateTab?.call(2),
-                          ),
-                          _overviewMetric(
-                            width: width,
-                            label: 'Focus today',
-                            value: _todayFocusMinutes < 60
-                                ? '${_todayFocusMinutes}m'
-                                : '${_todayFocusMinutes ~/ 60}h ${_todayFocusMinutes % 60}m',
-                            icon: Icons.timer_outlined,
-                            color: const Color(0xFF8B5CF6),
-                            onTap: () => Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const StudyDashboardScreen(),
-                                  ),
-                                )
-                                .then((_) => _refreshData()),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 18),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Up next',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: _overviewMetric(
+                          width: double.infinity,
+                          label: 'Classes today',
+                          value: '$todayClassCount',
+                          icon: Icons.school_outlined,
+                          color: const Color(0xFF14B8A6),
+                          onTap: () => Navigator.of(context)
+                              .push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SchoolHubScreen(),
+                                ),
+                              )
+                              .then((_) => _refreshData()),
                         ),
                       ),
-                      TextButton(
-                        onPressed: () => widget.onNavigateTab?.call(2),
-                        child: const Text('All reminders'),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _overviewMetric(
+                          width: double.infinity,
+                          label: 'Bills due soon',
+                          value: '$billsDueSoon',
+                          icon: Icons.receipt_long_outlined,
+                          color: const Color(0xFFF59E0B),
+                          onTap: () => Navigator.of(context)
+                              .push(
+                                MaterialPageRoute(
+                                  builder: (_) => const BillsScreen(),
+                                ),
+                              )
+                              .then((_) => _refreshData()),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  _buildUpcomingReminder(context, nextReminder),
-                  const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Focus',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(
-                                builder: (_) => const StudyDashboardScreen(),
-                              ),
-                            )
-                            .then((_) => _refreshData()),
-                        child: const Text('Open timer'),
-                      ),
-                    ],
+                  const SizedBox(height: 10),
+                  _overviewMetric(
+                    width: double.infinity,
+                    label: 'Reminders due',
+                    value: '$pendingTodayReminders',
+                    icon: Icons.notifications_active_outlined,
+                    color: const Color(0xFF6366F1),
+                    onTap: () => widget.onNavigateTab?.call(2),
                   ),
-                  const SizedBox(height: 4),
-                  _buildFocusPanel(context),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   _buildAIResetsSection(context),
                   const SizedBox(height: 8),
 
-                  // Quick Actions Section
-                  Text(
-                    'Quick Actions',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.3,
-                      fontSize: 18,
+                  if (_showDashboardSection('quick_actions')) ...[
+                    // Quick Actions Section
+                    const AppSectionHeader(
+                      title: 'Quick Actions',
+                      subtitle: 'Shortcuts for things you do often',
+                      icon: Icons.bolt_outlined,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         _quickActionButton(
                           context,
@@ -1475,23 +1515,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             _refreshData();
                           },
                         ),
-                        const SizedBox(width: 10),
-                        _quickActionButton(
-                          context,
-                          label: 'Class Schedule',
-                          icon: Icons.school_rounded,
-                          color: const Color(0xFF14B8A6),
-                          onTap: () async {
-                            await showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => const SchoolClassDialog(),
-                            );
-                            _refreshData();
-                          },
-                        ),
-                        const SizedBox(width: 10),
                         _quickActionButton(
                           context,
                           label: 'Add Bill',
@@ -1507,184 +1530,183 @@ class _HomeScreenState extends State<HomeScreen> {
                             _refreshData();
                           },
                         ),
-                        const SizedBox(width: 10),
                         _quickActionButton(
                           context,
-                          label: 'AI Reset',
-                          icon: Icons.smart_toy,
+                          label: 'Diary Entry',
+                          icon: Icons.menu_book_outlined,
                           color: const Color(0xFF8B5CF6),
                           onTap: () async {
-                            await showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => const AIAccountDialog(),
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const NotebookEditorScreen(isDiary: true),
+                              ),
                             );
                             _refreshData();
                           },
                         ),
-                        const SizedBox(width: 10),
                         _quickActionButton(
                           context,
-                          label: 'Login Account',
-                          icon: Icons.lock_outline,
-                          color: const Color(0xFFF59E0B),
+                          label: 'New Note',
+                          icon: Icons.note_add_outlined,
+                          color: const Color(0xFF3B82F6),
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const NotebookEditorScreen(isDiary: false),
+                              ),
+                            );
+                            _refreshData();
+                          },
+                        ),
+                        _quickActionButton(
+                          context,
+                          label: 'Class Schedule',
+                          icon: Icons.school_rounded,
+                          color: const Color(0xFF14B8A6),
                           onTap: () async {
                             await showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,
-                              builder: (_) => const UserAccountDialog(),
-                            );
-                            _refreshData();
-                          },
-                        ),
-                        const SizedBox(width: 10),
-                        _quickActionButton(
-                          context,
-                          label: 'LPG Order',
-                          icon: Icons.propane_tank_rounded,
-                          color: const Color(0xFFEF4444),
-                          onTap: () async {
-                            await showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => const GasPurchaseDialog(),
+                              builder: (_) => const SchoolClassDialog(),
                             );
                             _refreshData();
                           },
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 26),
+                    const SizedBox(height: 26),
+                  ],
 
-                  // Today's Classes Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.school_rounded,
-                            size: 20,
-                            color: theme.colorScheme.primary,
+                  if (_showDashboardSection('today_classes')) ...[
+                    // Today's Classes Section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.school_rounded,
+                              size: 20,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Today\'s Classes',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.3,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SchoolScheduleScreen(),
+                              ),
+                            ).then((_) => _refreshData());
+                          },
+                          child: const Text('View Schedule'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Builder(
+                      builder: (context) {
+                        final classStatus =
+                            _dayStatus ??
+                            _timetableService.calculateDayStatus(
+                              _schoolClasses,
+                              now,
+                            );
+                        final transitionKey = [
+                          ...classStatus.currentClasses.map(
+                            (item) => 'current:${item.schoolClass.id}',
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Today\'s Classes',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.3,
-                              fontSize: 18,
+                          if (classStatus.nextClass != null)
+                            'next:${classStatus.nextClass!.schoolClass.id}',
+                          if (classStatus.hasNoMoreClasses) 'done',
+                        ].join('|');
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 320),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, .035),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              ),
+                          child: KeyedSubtree(
+                            key: ValueKey(transitionKey),
+                            child: _buildTodaysClassesCard(
+                              context,
+                              _schoolClasses,
                             ),
                           ),
-                        ],
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SchoolScheduleScreen(),
-                            ),
-                          ).then((_) => _refreshData());
-                        },
-                        child: const Text('View Schedule'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Builder(
-                    builder: (context) {
-                      final classStatus =
-                          _dayStatus ??
-                          _timetableService.calculateDayStatus(
-                            _schoolClasses,
-                            now,
-                          );
-                      final transitionKey = [
-                        ...classStatus.currentClasses.map(
-                          (item) => 'current:${item.schoolClass.id}',
-                        ),
-                        if (classStatus.nextClass != null)
-                          'next:${classStatus.nextClass!.schoolClass.id}',
-                        if (classStatus.hasNoMoreClasses) 'done',
-                      ].join('|');
-                      return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 320),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) => FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, .035),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        ),
-                        child: KeyedSubtree(
-                          key: ValueKey(transitionKey),
-                          child: _buildTodaysClassesCard(
-                            context,
-                            _schoolClasses,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 26),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 26),
+                  ],
 
-                  // Cooking LPG Status Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.local_fire_department_rounded,
-                            size: 20,
-                            color: Color(0xFFF97316),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Household LPG Status',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.3,
-                              fontSize: 18,
+                  if (_showDashboardSection('household_gas')) ...[
+                    // Cooking LPG Status Section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.local_fire_department_rounded,
+                              size: 20,
+                              color: Color(0xFFF97316),
                             ),
-                          ),
-                        ],
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const GasTrackerScreen(),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Household LPG Status',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.3,
+                                fontSize: 18,
+                              ),
                             ),
-                          ).then((_) => _refreshData());
-                        },
-                        child: const Text('Open Tracker'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  _buildLpgStatusCard(context, latestGas, lastTankDuration),
-                  const SizedBox(height: 26),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const GasTrackerScreen(),
+                              ),
+                            ).then((_) => _refreshData());
+                          },
+                          child: const Text('Open Tracker'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildLpgStatusCard(context, latestGas, lastTankDuration),
+                    const SizedBox(height: 26),
+                  ],
 
                   // Modules & Hubs
-                  Text(
-                    'Modules & Hubs',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.3,
-                      fontSize: 18,
-                    ),
+                  const AppSectionHeader(
+                    title: 'Modules & Hubs',
+                    subtitle: 'Your tools, grouped in one place',
+                    icon: Icons.dashboard_outlined,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -1769,6 +1791,28 @@ class _HomeScreenState extends State<HomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const GasTrackerScreen(),
+                              ),
+                            ).then((_) => _refreshData());
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _moduleCard(
+                          context,
+                          title: 'Diary & Notes',
+                          subtitle: 'Journal, notes, and ideas',
+                          icon: Icons.menu_book_rounded,
+                          color: const Color(0xFF8B5CF6),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DiaryNotesScreen(),
                               ),
                             ).then((_) => _refreshData());
                           },
@@ -1862,12 +1906,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 onChanged: (val) async {
                                   final isDone = val ?? false;
-                                  final updated = r.copyWith(completed: isDone);
-                                  await _hive.saveReminder(updated);
                                   if (isDone) {
-                                    PetService.instance.onReminderCompleted(
-                                      updated,
-                                    );
+                                    await ReminderCompletionService.instance
+                                        .confirmAndCompleteReminder(context, r);
+                                  } else {
+                                    await ReminderCompletionService.instance
+                                        .uncompleteReminder(r);
                                   }
                                   _refreshData();
                                 },
@@ -1995,40 +2039,14 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.12 : 0.06),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color.withValues(alpha: 0.2), width: 1.2),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-          ],
-        ),
+    return ActionChip(
+      avatar: Icon(icon, color: color, size: 18),
+      label: Text(label),
+      onPressed: onTap,
+      backgroundColor: color.withValues(
+        alpha: Theme.of(context).brightness == Brightness.dark ? .16 : .08,
       ),
+      side: BorderSide(color: color.withValues(alpha: .22)),
     );
   }
 

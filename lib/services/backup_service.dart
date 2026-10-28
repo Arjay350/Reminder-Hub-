@@ -8,6 +8,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/app_models.dart';
+import '../models/diary_models.dart';
+import '../models/pet_models.dart';
+import '../models/study_models.dart';
 import 'hive_service.dart';
 import 'notification_service.dart';
 import 'widget_service.dart';
@@ -78,6 +81,8 @@ class BackupService {
       'timestamp': now.toIso8601String(),
       'dataVersion': hive.dataVersion,
       'reminders': hive.getReminders().map((e) => e.toJson()).toList(),
+      'reminderHistory':
+          hive.getReminderHistory().map((e) => e.toJson()).toList(),
       'schoolClasses': hive.getSchoolClasses().map((e) => e.toJson()).toList(),
       'schoolDayModes': _encodeDayModes(hive.getDayClassModes()),
       'aiAccounts': hive.getAIAccounts().map((e) => e.toJson()).toList(),
@@ -86,7 +91,19 @@ class BackupService {
       'gasPurchases': hive.getGasPurchases().map((e) => e.toJson()).toList(),
       'suppliers': hive.getSuppliers().map((e) => e.toJson()).toList(),
       'birthdays': hive.getBirthdays().map((e) => e.toJson()).toList(),
+      'diaryEntries': hive
+          .getDiaryEntries()
+          .map((entry) => entry.toStoredJson())
+          .toList(),
+      'notes': hive.getNotes().map((note) => note.toStoredJson()).toList(),
       'settings': hive.getSettings().toJson(),
+      'petPreferences': hive.getPetPreferences().toJson(),
+      'studyMethods':
+          hive.getStudyMethods().map((e) => e.toJson()).toList(),
+      'studyHistory':
+          hive.getStudyHistory().map((e) => e.toJson()).toList(),
+      'studySettings': hive.getStudySettings().toJson(),
+      'studySubjects': hive.getStudySubjects(),
     };
     final contents = const JsonEncoder.withIndent('  ').convert(data);
     if (Platform.isAndroid && !share) {
@@ -170,7 +187,7 @@ class BackupService {
         dialogTitle: 'Select a Reminder Hub backup',
       );
       if (result.isEmpty || result.first.path == null) return false;
-      return importBackupFromFile(result.first.path!);
+      return await importBackupFromFile(result.first.path!);
     } catch (_) {
       return false;
     }
@@ -190,6 +207,9 @@ class BackupService {
       await hive.clearAll();
       for (final item in parsed.reminders) {
         await hive.saveReminder(item);
+      }
+      for (final item in parsed.reminderHistory) {
+        await hive.saveReminderHistoryRecord(item);
       }
       for (final item in parsed.schoolClasses) {
         await hive.saveSchoolClass(item);
@@ -212,8 +232,29 @@ class BackupService {
       for (final item in parsed.birthdays) {
         await hive.saveBirthday(item);
       }
+      for (final item in parsed.diaryEntries) {
+        await hive.saveStoredDiaryEntry(item.id, item.toStoredJson());
+      }
+      for (final item in parsed.notes) {
+        await hive.saveStoredNote(item.id, item.toStoredJson());
+      }
       if (parsed.settings != null) {
         await hive.saveSettings(parsed.settings!);
+      }
+      if (parsed.petPreferences != null) {
+        await hive.savePetPreferences(parsed.petPreferences!);
+      }
+      for (final item in parsed.studyMethods) {
+        await hive.saveStudyMethod(item);
+      }
+      for (final item in parsed.studyHistory) {
+        await hive.saveStudyHistoryRecord(item);
+      }
+      if (parsed.studySettings != null) {
+        await hive.saveStudySettings(parsed.studySettings!);
+      }
+      for (final item in parsed.studySubjects) {
+        await hive.saveStudySubject(item);
       }
       await hive.saveAllDayClassModes(parsed.dayModes);
       await hive.setDataVersion(parsed.dataVersion);
@@ -349,6 +390,7 @@ class BackupService {
     await NotificationService.instance.rescheduleAll();
     await WidgetService.instance.updateSchoolWidget();
     await WidgetService.instance.updateBillsWidget();
+    HiveService.instance.notifyRemindersChanged();
   }
 
   Map<String, String> _encodeDayModes(Map<int, String> modes) =>
@@ -408,8 +450,25 @@ class BackupService {
       final settings = rawSettings == null
           ? null
           : AppSettings.fromJson(Map<String, dynamic>.from(rawSettings as Map));
+
+      final rawPet = data['petPreferences'];
+      final petPrefs = rawPet is Map
+          ? PetPreferences.fromJson(Map<String, dynamic>.from(rawPet))
+          : null;
+
+      final rawStudySettings = data['studySettings'];
+      final studySettings = rawStudySettings is Map
+          ? StudySettings.fromJson(Map<String, dynamic>.from(rawStudySettings))
+          : null;
+
+      final rawSubjects = data['studySubjects'];
+      final studySubjects = rawSubjects is List
+          ? rawSubjects.whereType<String>().toList()
+          : <String>[];
+
       return _ParsedFullBackup(
         reminders: list('reminders', Reminder.fromJson),
+        reminderHistory: list('reminderHistory', ReminderHistoryRecord.fromJson),
         schoolClasses: list('schoolClasses', SchoolClass.fromJson),
         aiAccounts: list('aiAccounts', AIAccount.fromJson),
         userAccounts: list('userAccounts', UserAccount.fromJson),
@@ -417,7 +476,14 @@ class BackupService {
         gasPurchases: list('gasPurchases', GasPurchase.fromJson),
         suppliers: list('suppliers', Supplier.fromJson),
         birthdays: list('birthdays', Birthday.fromJson),
+        diaryEntries: list('diaryEntries', DiaryEntry.fromJson),
+        notes: list('notes', NotebookNote.fromJson),
         settings: settings,
+        petPreferences: petPrefs,
+        studyMethods: list('studyMethods', StudyMethod.fromJson),
+        studyHistory: list('studyHistory', StudySessionRecord.fromJson),
+        studySettings: studySettings,
+        studySubjects: studySubjects,
         dayModes: _parseDayModes(data['schoolDayModes']),
         dataVersion:
             (data['dataVersion'] as num?)?.toInt() ??
@@ -471,6 +537,7 @@ class BackupService {
 class _ParsedFullBackup {
   const _ParsedFullBackup({
     required this.reminders,
+    required this.reminderHistory,
     required this.schoolClasses,
     required this.aiAccounts,
     required this.userAccounts,
@@ -478,12 +545,20 @@ class _ParsedFullBackup {
     required this.gasPurchases,
     required this.suppliers,
     required this.birthdays,
+    required this.diaryEntries,
+    required this.notes,
     required this.settings,
+    required this.petPreferences,
+    required this.studyMethods,
+    required this.studyHistory,
+    required this.studySettings,
+    required this.studySubjects,
     required this.dayModes,
     required this.dataVersion,
   });
 
   final List<Reminder> reminders;
+  final List<ReminderHistoryRecord> reminderHistory;
   final List<SchoolClass> schoolClasses;
   final List<AIAccount> aiAccounts;
   final List<UserAccount> userAccounts;
@@ -491,7 +566,14 @@ class _ParsedFullBackup {
   final List<GasPurchase> gasPurchases;
   final List<Supplier> suppliers;
   final List<Birthday> birthdays;
+  final List<DiaryEntry> diaryEntries;
+  final List<NotebookNote> notes;
   final AppSettings? settings;
+  final PetPreferences? petPreferences;
+  final List<StudyMethod> studyMethods;
+  final List<StudySessionRecord> studyHistory;
+  final StudySettings? studySettings;
+  final List<String> studySubjects;
   final Map<int, String> dayModes;
   final int dataVersion;
 }

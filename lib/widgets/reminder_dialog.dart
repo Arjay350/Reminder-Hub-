@@ -384,8 +384,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
                   validator: (val) {
                     if (_reminderBefore == 'Custom') {
                       final n = int.tryParse(val ?? '');
-                      if (n == null || n <= 0)
+                      if (n == null || n <= 0) {
                         return 'Enter a valid number of minutes';
+                      }
                     }
                     return null;
                   },
