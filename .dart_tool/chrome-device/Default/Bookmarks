@@ -1,12 +1,12 @@
 {
-   "checksum": "260d427a09236ee029ec9e4f78ec785e",
+   "checksum": "c5c9bd3f337c17644c6c11e2e0caa9d9",
    "roots": {
       "bookmark_bar": {
          "children": [ {
-            "date_added": "13435685760142706",
+            "date_added": "13437668974289738",
             "date_last_used": "0",
-            "guid": "499b86eb-2af0-4f6a-9dfe-c258e1bfc21d",
-            "id": "61",
+            "guid": "72c6e293-6b2a-4313-ba81-c09948653dff",
+            "id": "73",
             "name": "Agoda",
             "show_icon": false,
             "source": "oem_preload",
@@ -118,6 +118,72 @@
             "type": "url",
             "url": "https://tip.instructure.com/courses/68612/assignments/2775520",
             "visit_count": 6
+         }, {
+            "date_added": "13437650213744403",
+            "date_last_used": "0",
+            "guid": "c3fe99b6-877e-431b-aa0f-8ea5097d07ee",
+            "id": "71",
+            "name": "Agoda",
+            "show_icon": false,
+            "source": "oem_preload",
+            "type": "url",
+            "url": "https://s3.amazonaws.com/amundsen/redirect/19q2/agoda.html?utm_source=win32&utm_medium=favorite",
+            "visit_count": 0
+         }, {
+            "date_added": "13435692776772423",
+            "date_last_used": "0",
+            "guid": "1e108c4c-eded-4ee3-a4e0-c0b8d69d2909",
+            "id": "69",
+            "name": "Agoda",
+            "show_icon": false,
+            "source": "oem_preload",
+            "type": "url",
+            "url": "https://s3.amazonaws.com/amundsen/redirect/19q2/agoda.html?utm_source=win32&utm_medium=favorite",
+            "visit_count": 0
+         }, {
+            "date_added": "13435691223401727",
+            "date_last_used": "0",
+            "guid": "d3121161-d4eb-4438-a9ba-0cc2480160d0",
+            "id": "67",
+            "name": "Agoda",
+            "show_icon": false,
+            "source": "oem_preload",
+            "type": "url",
+            "url": "https://s3.amazonaws.com/amundsen/redirect/19q2/agoda.html?utm_source=win32&utm_medium=favorite",
+            "visit_count": 0
+         }, {
+            "date_added": "13435689670404815",
+            "date_last_used": "0",
+            "guid": "df5af303-9848-4722-9cc6-42e8d16e2977",
+            "id": "65",
+            "name": "Agoda",
+            "show_icon": false,
+            "source": "oem_preload",
+            "type": "url",
+            "url": "https://s3.amazonaws.com/amundsen/redirect/19q2/agoda.html?utm_source=win32&utm_medium=favorite",
+            "visit_count": 0
+         }, {
+            "date_added": "13435689196666534",
+            "date_last_used": "0",
+            "guid": "f58eb070-1639-4523-b7c0-bfbe0c26a553",
+            "id": "63",
+            "name": "Agoda",
+            "show_icon": false,
+            "source": "oem_preload",
+            "type": "url",
+            "url": "https://s3.amazonaws.com/amundsen/redirect/19q2/agoda.html?utm_source=win32&utm_medium=favorite",
+            "visit_count": 0
+         }, {
+            "date_added": "13435685760142706",
+            "date_last_used": "0",
+            "guid": "499b86eb-2af0-4f6a-9dfe-c258e1bfc21d",
+            "id": "61",
+            "name": "Agoda",
+            "show_icon": false,
+            "source": "oem_preload",
+            "type": "url",
+            "url": "https://s3.amazonaws.com/amundsen/redirect/19q2/agoda.html?utm_source=win32&utm_medium=favorite",
+            "visit_count": 0
          }, {
             "date_added": "13435434050623251",
             "date_last_used": "0",
@@ -352,7 +418,7 @@
          } ],
          "date_added": "13434975258341015",
          "date_last_used": "0",
-         "date_modified": "13435685760142706",
+         "date_modified": "13437668974289738",
          "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
          "id": "1",
          "name": "Favorites bar",
@@ -424,6 +490,6 @@
          "type": "folder"
       }
    },
-   "sync_metadata": "CjEKDgiIgQISCKHkj/2gAQAAEgAqGDM2MzEzQlpiQm9RcFRFbHpYUTh3eVE9PUgDoAYEEqwBCAoSpwEKHHk4VDRsd1FkRDE0VDBoT2tSZHRLSlFPb05XVT0SJDQyYTkzZWE1LTkxZTEtNDM3Zi04ZDNjLTQwMmM1NThjOTU3ORgAIAAoADDz/bvytzI4qP+78rcyQKj/u/K3MkocMllUeHJBWHhHSW00alJObXpqbWRrcWtvOC80PVoeIhxtRnRYTnBadlNMVmZ0T0NBUytjc29NVjBZWmM9ZQAAAADCPgJgBRKMAQgCEocBChxZY1NUb252RVNQd3FDczRMMmNyVmh2NjhMOTg9EiRhZTE0ZGVhZS1iODExLTU1MmMtOWVjOC0zZGVmNjgwZDdmYmYYACAAKAAw05e4u9UvOO+UkPP0L0DvlJDz9C9KHG9QVmtod0JSYlY2NUtDV1IyK0lPTkhXb091OD1lAAAAAMI+AmAAEqwBCA0SpwEKHHJvNmlxNThtKzN1Ty9tUytzMmZDc3pid0ZzTT0SJDVhNzQxMGFmLWU3MmMtNDcxZi1iMGU5LWNmYWYzZTBmMTk3ZBgAIAAoADCetqOM3zM4w6C18rcyQMOgtfK3MkocbnBCU3dlRTdKMmVuMjZMckx1WWVqY2hqaWZJPVoeIhxRbkdVUG84S2taa0VLdUE2eUc3ZVQwRExVZVE9ZV44KFTCPgJgBRKsAQgIEqcBChxyV1BYUklYaWRSdU96UW93SUdHWU9SUEVKMEk9EiRkNDkxNDMxOS04ZjViLTQzN2YtYmVkZi0yZDM3YTk5NzE5MGUYACAAKAAwtJO18rcyOMKftfK3MkDCn7XytzJKHG5QRVZXeHlVRUFSWGJ0WXIzMkFiR1A4Sm1Pbz1aHiIcNVZTZTZBaDFTSC9BK1N5N01BTUxadjJ1cVZzPWUAAAAAwj4CYAASrAEICRKnAQocd05rSG00bXNwY05iTnVicUFaZkMrR3pieG9vPRIkMDgzMDQwYzEtYWI5ZS00OTViLWFmZDctZmM0YmUwMGE5NTY5GAAgACgAMLaTtfK3MjiFoLXytzJAhaC18rcyShxOSWNOY0pFQ1B1WFBGUE1GVU04akx5aXN6YjA9Wh4iHFo5QUliMEs2dGQwaXZUS24xRGFQN3Zwd2tMWT1lAAAAAMI+AmAAEowBCAEShwEKHHl4Si82ZnZrZWNyN2twNUVRekI0dFdMcGRiRT0SJDFmYjljMzQ3LTJiMDgtNTUyMS1iN2YxLTU3ZWU3MDdhMjYyZhgAIAAoADDTl7i71S8435SQ8/QvQN+UkPP0L0ocYVJDV0xnaEY5YjVJbnFLSUR2dUovanZRa0ZjPWUAAAAAwj4CYAASrAEICxKnAQocTFNLRGtiSXFpc0tra3E3Q0JoY3F5UDBGVjNRPRIkZGY0YzVmMzAtOWEzOS00NjBlLWI5NjItYmExYmJlNjg3M2IxGAAgACgAMPuHw4O4Mzj2soiVgDBA9rKIlYAwShxraDBOS0wzWjhzUGlXajN3WXBrdE5xZ3Zsalk9Wh4iHExRSEtveFNJL0lDblJadGJRZW04WXlKckZhaz1lnhBE/MI+AmAFEq0BCA8SqAEKHGUzK2c5T3ZZWTlYamRVOVBuV2VWREQzWlhyRT0SJDBlMDU1ZjNiLTI3YzktNDgzZC05ZmExLTA0OTRmYWFhMTM1ZRgAIAAoADDwtajY9TM456C18rcyQOegtfK3MkocY0hBQ3cvL3RrZ09TWGMvaitsalRLbU9XUkNFPVofIh28REZWZjlTM3lvM1JWa2twU3lKQXVHRzc0bVNRPWVQQsPSwj4CYAUSrAEIDBKnAQocNm4vL1JvbTRyUVdWWDBLWlY0WXQzTGxXOXFjPRIkMDVlMWEyNTEtOTZhNy00MDM1LWJhZjYtZWQxMjM2NGI2NGViGAAgACgAMLqTtfK3MjiOobXytzJAjqG18rcyShwxU2tQTVpnem1QZWQrTGpMdmZyQ0EvbnBISzQ9Wh4iHEx2anZHVUdjVkQ1c2s2TDBlZlhpbzhCTU9WVT1lAAAAAMI+AmAFEowBCAUShwEKHHdSQnJaTCs2UEE5YXZLZ2pOUDdKWERMY2Z2cz0SJDMyMmMyOTdkLWZhNTktNTk5Yy05NTAyLWJmZDJlN2NiNjIzMBgAIAAoADC60/G6pDM4m9XxuqQzQJvV8bqkM0ocbm14NjVzUUR2eEk4VGdFZXYrQStudHRvU240PWUAAAAAwj4CYAASrAEIDhKnAQocdXNkMUZxUHFJYytScXZmM0V0dFVCSnluMVkwPRIkMmFlZWFkZTQtNzY3ZS00ZjM1LWJhZTUtMjgyZjQ3ZTZhZDNiGAAgACgAMKOAj4K9MzikoLXytzJApKC18rcyShxtZmFWUlNwaWh2dUFyM0xSTUhFc0NZZ0lGeTA9Wh4iHFZCQVdrQ1AvTTRJUEZTVS9nKzd2bUFGUmwvYz1l91wVQcI+AmAFEowBCAMShwEKHG5qZ0R1ODhlQ3J2WHA4NnBEN2ZIR2NxRnA4OD0SJGYxOGY2YzE3LTk3MDctNTk0NS1iMWNkLWQzZDEzYWY3ZmU3NBgAIAAoADDTl7i71S843JWQ8/QvQNyVkPP0L0oceXpOQjAxY241NEE3Y1JVMHVUKy9QZ21UdFVvPWUAAAAAwj4CYAASrQEIEhKoAQocR1pNSlRsTG5IcHRnT1hUSW9zZG10Nkk1NFhnPRIkY2YyODA4YjctMzY4Yy00YTZhLThmZjQtMWQ2M2VkNzVhYjUyGAAgACgAMJvm0pf0MziViZHOkDNAlYmRzpAzShxUTTE0Q3RYcnZRZDRHanhKakZLUWdJZzc5cGc9Wh8iHfdlamw1eEJBTFE0MllncUYvbnpHY2gwb2RLa2M9ZSNRRUbCPgJgBRKtAQgQEqgBChxQV2RtV3N4bmUvK2ozcEpZNWtqdnlqK3FsUzA9EiQ4OWVhY2ZjNC04OWMxLTRlNTYtODBlNC1lN2FhZjRhODIyYzIYACAAKAAw2Oz6tIU0OKup1qXZMkCrqdal2TJKHDhWdFYvLzV5NFlqSmpoazZaK1ozRGE3cUpadz1aHyId3ktKOUY2QUJUV2pmaTE4c1Ria2lmUXpJbFByUT1l9+AEKcI+AmAFEq0BCBESqAEKHHNtTHQvR1U3dFgyUE85b2tQejZsd0dOUUY0RT0SJDM2YmQ2NTk4LWEzNjItNGQ3ZC1iZDkyLWYyODQ3ZWJiNWI2OBgAIAAoADCturKu9TM4/eLXq9wyQP3i16vcMkocR2FyYVQwaDFENzVkS0xPdVZLdXNXRlBZNW1ZPVofIh3vNEgxUDBKbDk1cjN6V3RsYS93UHFFMytEQVJnPWXH/W3mwj4CYAUSrQEIExKoAQocQmlZb3F1Z1VOSXk3ejhqU2t4S1NUNEEyNEZBPRIkNjA2NWUxNDctZDI1ZC00NzM1LTgyMzEtOGY4M2VmZWQzMTk5GAAgACgAMOKOuKvaMzj7oJXGnDNA+6CVxpwzShxLd3gvOEhQZWtjVGk0SFJVK0ZsTVAvcEhQVEU9Wh8iHft1eHZVTU16anNFQmFCV01QL0V2VGx4M3paZnc9Zcf9bebCPgJgBTAAOAA=",
+   "sync_metadata": "CkEKHgiIgQISCEpGo4GhAQAAKg4QABgBIAAoBTAAOABAABIAKhgzNjMxM0JaYkJvUXBURWx6WFE4d3lRPT1IA6AGDBKMAQgCEocBChxZY1NUb252RVNQd3FDczRMMmNyVmh2NjhMOTg9EiRhZTE0ZGVhZS1iODExLTU1MmMtOWVjOC0zZGVmNjgwZDdmYmYYACAAKAAw05e4u9UvOO+UkPP0L0DvlJDz9C9KHG9QVmtod0JSYlY2NUtDV1IyK0lPTkhXb091OD1lAAAAAMI+AmAAEqwBCA0SpwEKHHJvNmlxNThtKzN1Ty9tUytzMmZDc3pid0ZzTT0SJDVhNzQxMGFmLWU3MmMtNDcxZi1iMGU5LWNmYWYzZTBmMTk3ZBgAIAAoADCetqOM3zM4w6C18rcyQMOgtfK3MkocbnBCU3dlRTdKMmVuMjZMckx1WWVqY2hqaWZJPVoeIhxRbkdVUG84S2taa0VLdUE2eUc3ZVQwRExVZVE9ZV44KFTCPgJgBRKsAQgIEqcBChxyV1BYUklYaWRSdU96UW93SUdHWU9SUEVKMEk9EiRkNDkxNDMxOS04ZjViLTQzN2YtYmVkZi0yZDM3YTk5NzE5MGUYACAAKAAwtJO18rcyOMKftfK3MkDCn7XytzJKHG5QRVZXeHlVRUFSWGJ0WXIzMkFiR1A4Sm1Pbz1aHiIcNVZTZTZBaDFTSC9BK1N5N01BTUxadjJ1cVZzPWUAAAAAwj4CYAASrAEICRKnAQocd05rSG00bXNwY05iTnVicUFaZkMrR3pieG9vPRIkMDgzMDQwYzEtYWI5ZS00OTViLWFmZDctZmM0YmUwMGE5NTY5GAAgACgAMLaTtfK3MjiFoLXytzJAhaC18rcyShxOSWNOY0pFQ1B1WFBGUE1GVU04akx5aXN6YjA9Wh4iHFo5QUliMEs2dGQwaXZUS24xRGFQN3Zwd2tMWT1lAAAAAMI+AmAAEqwBCAoSpwEKHHk4VDRsd1FkRDE0VDBoT2tSZHRLSlFPb05XVT0SJDQyYTkzZWE1LTkxZTEtNDM3Zi04ZDNjLTQwMmM1NThjOTU3ORgAIAAoADDz/bvytzI4qP+78rcyQKj/u/K3MkocMllUeHJBWHhHSW00alJObXpqbWRrcWtvOC80PVoeIhxtRnRYTnBadlNMVmZ0T0NBUytjc29NVjBZWmM9ZQAAAADCPgJgBRKMAQgBEocBChx5eEovNmZ2a2VjcjdrcDVFUXpCNHRXTHBkYkU9EiQxZmI5YzM0Ny0yYjA4LTU1MjEtYjdmMS01N2VlNzA3YTI2MmYYACAAKAAw05e4u9UvON+UkPP0L0DflJDz9C9KHGFSQ1dMZ2hGOWI1SW5xS0lEdnVKL2p2UWtGYz1lAAAAAMI+AmAAEqwBCAsSpwEKHExTS0RrYklxaXNLa2txN0NCaGNxeVAwRlYzUT0SJGRmNGM1ZjMwLTlhMzktNDYwZS1iOTYyLWJhMWJiZTY4NzNiMRgAIAAoADD7h8ODuDM49rKIlYAwQPayiJWAMEoca2gwTktMM1o4c1BpV2ozd1lwa3ROcWd2bGpZPVoeIhxMUUhLb3hTSS9JQ25SWnRiUWVtOFl5SnJGYWs9ZZ4QRPzCPgJgBRKtAQgPEqgBChxlMytnOU92WVk5WGpkVTlQbldlVkREM1pYckU9EiQwZTA1NWYzYi0yN2M5LTQ4M2QtOWZhMS0wNDk0ZmFhYTEzNWUYACAAKAAw8LWo2PUzOOegtfK3MkDnoLXytzJKHGNIQUN3Ly90a2dPU1hjL2orbGpUS21PV1JDRT1aHyIdvERGVmY5UzN5bzNSVmtrcFN5SkF1R0c3NG1TUT1lUELD0sI+AmAFEqwBCAwSpwEKHDZuLy9Sb200clFXVlgwS1pWNFl0M0xsVzlxYz0SJDA1ZTFhMjUxLTk2YTctNDAzNS1iYWY2LWVkMTIzNjRiNjRlYhgAIAAoADC6k7XytzI4jqG18rcyQI6htfK3MkocMVNrUE1aZ3ptUGVkK0xqTHZmckNBL25wSEs0PVoeIhxMdmp2R1VHY1ZENXNrNkwwZWZYaW84Qk1PVlU9ZQAAAADCPgJgBRKMAQgFEocBChx3UkJyWkwrNlBBOWF2S2dqTlA3SlhETGNmdnM9EiQzMjJjMjk3ZC1mYTU5LTU5OWMtOTUwMi1iZmQyZTdjYjYyMzAYACAAKAAwutPxuqQzOJvV8bqkM0Cb1fG6pDNKHG5teDY1c1FEdnhJOFRnRWV2K0ErbnR0b1NuND1lAAAAAMI+AmAAEqwBCA4SpwEKHHVzZDFGcVBxSWMrUnF2ZjNFdHRVQkp5bjFZMD0SJDJhZWVhZGU0LTc2N2UtNGYzNS1iYWU1LTI4MmY0N2U2YWQzYhgAIAAoADCjgI+CvTM4pKC18rcyQKSgtfK3MkocbWZhVlJTcGlodnVBcjNMUk1IRXNDWWdJRnkwPVoeIhxWQkFXa0NQL000SVBGU1UvZys3dm1BRlJsL2M9ZfdcFUHCPgJgBRKMAQgDEocBChxuamdEdTg4ZUNydlhwODZwRDdmSEdjcUZwODg9EiRmMThmNmMxNy05NzA3LTU5NDUtYjFjZC1kM2QxM2FmN2ZlNzQYACAAKAAw05e4u9UvONyVkPP0L0DclZDz9C9KHHl6TkIwMWNuNTRBN2NSVTB1VCsvUGdtVHRVbz1lAAAAAMI+AmAAEq0BCBISqAEKHEdaTUpUbExuSHB0Z09YVElvc2RtdDZJNTRYZz0SJGNmMjgwOGI3LTM2OGMtNGE2YS04ZmY0LTFkNjNlZDc1YWI1MhgAIAAoADCb5tKX9DM4lYmRzpAzQJWJkc6QM0ocVE0xNEN0WHJ2UWQ0R2p4SmpGS1FnSWc3OXBnPVofIh33ZWpsNXhCQUxRNDJZZ3FGL256R2NoMG9kS2tjPWUjUUVGwj4CYAUSrQEIEBKoAQocUFdkbVdzeG5lLytqM3BKWTVranZ5aitxbFMwPRIkODllYWNmYzQtODljMS00ZTU2LTgwZTQtZTdhYWY0YTgyMmMyGAAgACgAMNjs+rSFNDirqdal2TJAq6nWpdkyShw4VnRWLy81eTRZakpqaGs2WitaM0RhN3FKWnc9Wh8iHd5LSjlGNkFCVFdqZmkxOHNUYmtpZlF6SWxQclE9ZffgBCnCPgJgBRKtAQgREqgBChxzbUx0L0dVN3RYMlBPOW9rUHo2bHdHTlFGNEU9EiQzNmJkNjU5OC1hMzYyLTRkN2QtYmQ5Mi1mMjg0N2ViYjViNjgYACAAKAAwrbqyrvUzOP3i16vcMkD94ter3DJKHEdhcmFUMGgxRDc1ZEtMT3VWS3VzV0ZQWTVtWT1aHyId7zRIMVAwSmw5NXIzeld0bGEvd1BxRTMrREFSZz1lx/1t5sI+AmAFEq0BCBMSqAEKHEJpWW9xdWdVTkl5N3o4alNreEtTVDRBMjRGQT0SJDYwNjVlMTQ3LWQyNWQtNDczNS04MjMxLThmODNlZmVkMzE5ORgAIAAoADDijrir2jM4+6CVxpwzQPuglcacM0ocS3d4LzhIUGVrY1RpNEhSVStGbE1QL3BIUFRFPVofIh37dXh2VU1NempzRUJhQldNUC9FdlRseDN6WmZ3PWXH/W3mwj4CYAUwADgA",
    "version": 1
 }

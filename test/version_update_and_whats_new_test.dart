@@ -11,7 +11,7 @@ void main() {
     final release = WhatsNewRegistry.getRelease('1.4.0');
     expect(release, isNotNull);
     expect(release!.appTitle, 'Reminder Hub 1.4.0');
-    expect(release.items.length, 6);
+    expect(release.items.length, 9);
     expect(
       release.items.map((item) => item.title),
       containsAll(<String>[
@@ -19,7 +19,10 @@ void main() {
         'Customizable Cat Coats & Feeding',
         'Interactive Gestures & Purrs',
         'School Timetable & Study Sync',
+        'Birthday & Milestone Tracker',
         'AI Resets & Cooldown Improvements',
+        'Google Drive Cloud Backup',
+        'Send Feedback',
         'Bug Fixes & UI Improvements',
       ]),
     );

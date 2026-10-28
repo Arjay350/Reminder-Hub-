@@ -1,23 +1,43 @@
-2026/10/05-22:56:06.608 6594 Reusing MANIFEST C:\Users\rjxas\AppData\Local\Temp\flutter_tools.3be20879\flutter_tools_chrome_device.c382a610\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
-2026/10/05-22:56:06.617 6594 Recovering log #42
-2026/10/05-22:56:06.624 6594 Reusing old log C:\Users\rjxas\AppData\Local\Temp\flutter_tools.3be20879\flutter_tools_chrome_device.c382a610\Default\EdgeCoupons/coupons_data.db/000042.log 
-2026/10/05-22:56:06.629 6594 Delete type=0 #4
-2026/10/05-22:56:06.630 6594 Delete type=0 #7
-2026/10/05-22:56:06.630 6594 Delete type=2 #8
-2026/10/05-22:56:06.630 6594 Delete type=0 #10
-2026/10/05-22:56:06.630 6594 Delete type=2 #11
-2026/10/05-22:56:06.630 6594 Delete type=0 #13
-2026/10/05-22:56:06.630 6594 Delete type=2 #14
-2026/10/05-22:56:06.808 6594 Delete type=0 #16
-2026/10/05-22:56:06.810 6594 Delete type=2 #17
-2026/10/05-22:56:06.812 6594 Delete type=0 #19
-2026/10/05-22:56:06.814 6594 Delete type=2 #21
-2026/10/05-22:56:06.815 6594 Delete type=0 #23
-2026/10/05-22:56:06.817 6594 Delete type=2 #24
-2026/10/05-22:56:06.845 6594 Delete type=0 #26
-2026/10/05-22:56:06.965 6594 Delete type=2 #27
-2026/10/05-22:56:06.998 6594 Delete type=0 #29
-2026/10/05-22:56:06.999 6594 Delete type=2 #30
-2026/10/05-22:56:07.000 6594 Delete type=0 #32
-2026/10/05-22:56:07.001 6594 Delete type=0 #36
-2026/10/05-22:56:07.003 6594 Delete type=0 #39
+2026/10/28-21:49:38.260 2ff8 Reusing MANIFEST C:\Users\rjxas\AppData\Local\Temp\flutter_tools.5358c5f2\flutter_tools_chrome_device.f45b0cf0\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/10/28-21:49:38.277 2ff8 Recovering log #55
+2026/10/28-21:49:38.289 2ff8 Reusing old log C:\Users\rjxas\AppData\Local\Temp\flutter_tools.5358c5f2\flutter_tools_chrome_device.f45b0cf0\Default\EdgeCoupons/coupons_data.db/000055.log 
+2026/10/28-21:49:38.295 2ff8 Delete type=0 #4
+2026/10/28-21:49:38.297 2ff8 Delete type=0 #7
+2026/10/28-21:49:38.297 2ff8 Delete type=2 #8
+2026/10/28-21:49:38.302 2ff8 Delete type=0 #10
+2026/10/28-21:49:38.302 2ff8 Delete type=2 #11
+2026/10/28-21:49:38.302 2ff8 Delete type=0 #13
+2026/10/28-21:49:38.303 2ff8 Delete type=2 #14
+2026/10/28-21:49:38.521 2ff8 Delete type=0 #16
+2026/10/28-21:49:38.533 2ff8 Delete type=2 #17
+2026/10/28-21:49:38.550 2ff8 Delete type=0 #19
+2026/10/28-21:49:38.571 2ff8 Delete type=2 #21
+2026/10/28-21:49:38.700 2ff8 Delete type=0 #23
+2026/10/28-21:49:39.131 2ff8 Delete type=2 #24
+2026/10/28-21:49:39.132 2ff8 Delete type=0 #26
+2026/10/28-21:49:39.133 2ff8 Delete type=2 #27
+2026/10/28-21:49:39.133 2ff8 Delete type=0 #29
+2026/10/28-21:49:39.134 2ff8 Delete type=2 #30
+2026/10/28-21:49:39.149 2ff8 Delete type=0 #32
+2026/10/28-21:49:39.195 2ff8 Delete type=2 #34
+2026/10/28-21:49:39.211 2ff8 Delete type=0 #36
+2026/10/28-21:49:39.258 2ff8 Delete type=2 #37
+2026/10/28-21:49:39.289 2ff8 Delete type=0 #39
+2026/10/28-21:49:39.304 2ff8 Delete type=2 #40
+2026/10/28-21:49:39.360 2ff8 Delete type=0 #42
+2026/10/28-21:49:39.370 2ff8 Delete type=2 #43
+2026/10/28-21:49:39.373 2ff8 Delete type=0 #45
+2026/10/28-21:49:39.410 2ff8 Delete type=0 #49
+2026/10/28-21:49:39.537 2ff8 Delete type=0 #52
+2026/10/28-21:50:08.074 3584 Level-0 table #59: started
+2026/10/28-21:50:08.078 3584 Level-0 table #59: 683444 bytes OK
+2026/10/28-21:50:08.080 3584 Delete type=0 #55
+2026/10/28-21:50:08.081 3ac Compacting 4@0 + 1@1 files
+2026/10/28-21:50:08.089 3ac Generated table #60@0: 4 keys, 683351 bytes
+2026/10/28-21:50:08.089 3ac Compacted 4@0 + 1@1 files => 683351 bytes
+2026/10/28-21:50:08.090 3ac compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/28-21:50:08.092 3ac Delete type=2 #47
+2026/10/28-21:50:08.092 3ac Delete type=2 #50
+2026/10/28-21:50:08.092 3ac Delete type=2 #53
+2026/10/28-21:50:08.092 3ac Delete type=2 #56
+2026/10/28-21:50:08.092 3ac Delete type=2 #59

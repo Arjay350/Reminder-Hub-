@@ -74,6 +74,16 @@ class SecurityService {
     await _storage.delete(key: 'app_pin');
   }
 
+  Future<String?> getNotebookEncryptionKey() async =>
+      _storage.read(key: 'reminder_hub_notebook_encryption_key');
+
+  Future<void> setNotebookEncryptionKey(String key) async {
+    await _storage.write(
+      key: 'reminder_hub_notebook_encryption_key',
+      value: key,
+    );
+  }
+
   Future<bool> verifyPin(String enteredPin) async {
     final savedPin = await getAppPin();
     return savedPin == enteredPin;

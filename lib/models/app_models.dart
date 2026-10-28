@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 class Birthday {
   Birthday({
@@ -217,6 +218,7 @@ class Reminder {
     required this.priority,
     required this.notes,
     required this.completed,
+    this.targetDayOfMonth,
   });
 
   final String id;
@@ -230,6 +232,7 @@ class Reminder {
   final String priority;
   final String notes;
   final bool completed;
+  final int? targetDayOfMonth;
 
   Reminder copyWith({
     String? id,
@@ -243,6 +246,7 @@ class Reminder {
     String? priority,
     String? notes,
     bool? completed,
+    int? targetDayOfMonth,
   }) {
     return Reminder(
       id: id ?? this.id,
@@ -256,6 +260,7 @@ class Reminder {
       priority: priority ?? this.priority,
       notes: notes ?? this.notes,
       completed: completed ?? this.completed,
+      targetDayOfMonth: targetDayOfMonth ?? this.targetDayOfMonth,
     );
   }
 
@@ -271,6 +276,7 @@ class Reminder {
     'priority': priority,
     'notes': notes,
     'completed': completed,
+    if (targetDayOfMonth != null) 'targetDayOfMonth': targetDayOfMonth,
   };
 
   factory Reminder.fromJson(Map<String, dynamic> json) => Reminder(
@@ -285,7 +291,182 @@ class Reminder {
     priority: json['priority'] as String,
     notes: json['notes'] as String,
     completed: json['completed'] as bool,
+    targetDayOfMonth: (json['targetDayOfMonth'] as num?)?.toInt(),
   );
+
+  Color get categoryColor {
+    switch (category) {
+      case 'Bills':
+        return const Color(0xFF22C55E);
+      case 'AI Reset':
+        return const Color(0xFF8B5CF6);
+      case 'Subscriptions':
+        return const Color(0xFF3B82F6);
+      case 'Gaming':
+        return const Color(0xFFEC4899);
+      case 'Work':
+        return const Color(0xFFF59E0B);
+      case 'School':
+        return const Color(0xFF14B8A6);
+      case 'Personal':
+        return const Color(0xFFEF4444);
+      case 'Household':
+        return const Color(0xFF6366F1);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  IconData get categoryIcon {
+    switch (category) {
+      case 'Bills':
+        return Icons.receipt_long;
+      case 'AI Reset':
+        return Icons.smart_toy;
+      case 'Subscriptions':
+        return Icons.subscriptions;
+      case 'Gaming':
+        return Icons.sports_esports;
+      case 'Work':
+        return Icons.work;
+      case 'School':
+        return Icons.school;
+      case 'Personal':
+        return Icons.favorite;
+      case 'Household':
+        return Icons.home_work;
+      default:
+        return Icons.push_pin;
+    }
+  }
+
+  bool get isRecurring =>
+      repeat.trim().isNotEmpty && repeat.trim().toLowerCase() != 'none';
+
+  DateTime get dueDateTime {
+    final clean = time.trim().toUpperCase();
+    final isPm = clean.contains('PM');
+    final isAm = clean.contains('AM');
+    final numPart = clean.replaceAll('AM', '').replaceAll('PM', '').trim();
+    final parts = numPart.split(':');
+    int hour = int.tryParse(parts[0]) ?? 9;
+    int minute = parts.length > 1
+        ? (int.tryParse(parts[1].replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
+        : 0;
+    if (isPm && hour < 12) hour += 12;
+    if (isAm && hour == 12) hour = 0;
+    return DateTime(date.year, date.month, date.day, hour, minute);
+  }
+
+  DateTime calculateNextOccurrence([DateTime? referenceDate]) {
+    final now = referenceDate ?? DateTime.now();
+    final repeatMode = repeat.trim().toLowerCase();
+    if (repeatMode == 'none' || repeatMode.isEmpty) {
+      return date;
+    }
+
+    final anchorDay = targetDayOfMonth ?? date.day;
+    final currentDue = dueDateTime;
+
+    DateTime advanceOnce(DateTime current) {
+      switch (repeatMode) {
+        case 'daily':
+          return current.add(const Duration(days: 1));
+        case 'weekly':
+          return current.add(const Duration(days: 7));
+        case 'monthly':
+          var y = current.year;
+          var m = current.month + 1;
+          if (m > 12) {
+            m = 1;
+            y++;
+          }
+          final maxDay = DateTime(y, m + 1, 0).day;
+          return DateTime(
+            y,
+            m,
+            anchorDay.clamp(1, maxDay),
+            currentDue.hour,
+            currentDue.minute,
+          );
+        case 'yearly':
+          final y = current.year + 1;
+          final maxDay = DateTime(y, current.month + 1, 0).day;
+          return DateTime(
+            y,
+            current.month,
+            anchorDay.clamp(1, maxDay),
+            currentDue.hour,
+            currentDue.minute,
+          );
+        default:
+          return current.add(const Duration(days: 1));
+      }
+    }
+
+    DateTime candidate = advanceOnce(currentDue);
+    while (!candidate.isAfter(now)) {
+      candidate = advanceOnce(candidate);
+    }
+    return candidate;
+  }
+}
+
+class ReminderHistoryRecord {
+  ReminderHistoryRecord({
+    required this.id,
+    required this.reminderId,
+    required this.title,
+    required this.category,
+    required this.originalDueDate,
+    required this.completedAt,
+    this.time = '',
+    this.repeat = 'None',
+    this.priority = 'Medium',
+    this.notes = '',
+  });
+
+  final String id;
+  final String reminderId;
+  final String title;
+  final String category;
+  final DateTime originalDueDate;
+  final DateTime completedAt;
+  final String time;
+  final String repeat;
+  final String priority;
+  final String notes;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'reminderId': reminderId,
+    'title': title,
+    'category': category,
+    'originalDueDate': originalDueDate.toIso8601String(),
+    'completedAt': completedAt.toIso8601String(),
+    'time': time,
+    'repeat': repeat,
+    'priority': priority,
+    'notes': notes,
+  };
+
+  factory ReminderHistoryRecord.fromJson(Map<String, dynamic> json) =>
+      ReminderHistoryRecord(
+        id: json['id'] as String? ?? const Uuid().v4(),
+        reminderId: json['reminderId'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        category: json['category'] as String? ?? 'General',
+        originalDueDate: json['originalDueDate'] != null
+            ? DateTime.parse(json['originalDueDate'] as String)
+            : DateTime.now(),
+        completedAt: json['completedAt'] != null
+            ? DateTime.parse(json['completedAt'] as String)
+            : DateTime.now(),
+        time: json['time'] as String? ?? '',
+        repeat: json['repeat'] as String? ?? 'None',
+        priority: json['priority'] as String? ?? 'Medium',
+        notes: json['notes'] as String? ?? '',
+      );
 
   Color get categoryColor {
     switch (category) {
@@ -1435,6 +1616,13 @@ class Supplier {
 }
 
 class AppSettings {
+  static const defaultDashboardSectionOrder = <String>[
+    'school_overview',
+    'birthdays',
+    'upcoming_reminder',
+    'pet',
+  ];
+
   AppSettings({
     required this.themeMode, // System, Light, Dark
     this.userName = '',
@@ -1448,6 +1636,11 @@ class AppSettings {
     this.lastSeenWhatsNewVersion = '',
     this.backupFolderPath = '',
     this.hideSchoolScheduleInCalendar = false,
+    this.hiddenDashboardSections = const [],
+    this.dashboardSectionOrder = defaultDashboardSectionOrder,
+    this.lastGoogleDriveBackupDate,
+    this.googleDriveAccountEmail,
+    this.autoGoogleDriveBackup = false,
   });
 
   final String themeMode;
@@ -1462,6 +1655,11 @@ class AppSettings {
   final String lastSeenWhatsNewVersion;
   final String backupFolderPath;
   final bool hideSchoolScheduleInCalendar;
+  final List<String> hiddenDashboardSections;
+  final List<String> dashboardSectionOrder;
+  final String? lastGoogleDriveBackupDate;
+  final String? googleDriveAccountEmail;
+  final bool autoGoogleDriveBackup;
 
   AppSettings copyWith({
     String? themeMode,
@@ -1476,6 +1674,11 @@ class AppSettings {
     String? lastSeenWhatsNewVersion,
     String? backupFolderPath,
     bool? hideSchoolScheduleInCalendar,
+    List<String>? hiddenDashboardSections,
+    List<String>? dashboardSectionOrder,
+    String? lastGoogleDriveBackupDate,
+    String? googleDriveAccountEmail,
+    bool? autoGoogleDriveBackup,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -1492,6 +1695,16 @@ class AppSettings {
       backupFolderPath: backupFolderPath ?? this.backupFolderPath,
       hideSchoolScheduleInCalendar:
           hideSchoolScheduleInCalendar ?? this.hideSchoolScheduleInCalendar,
+      hiddenDashboardSections:
+          hiddenDashboardSections ?? this.hiddenDashboardSections,
+      dashboardSectionOrder:
+          dashboardSectionOrder ?? this.dashboardSectionOrder,
+      lastGoogleDriveBackupDate:
+          lastGoogleDriveBackupDate ?? this.lastGoogleDriveBackupDate,
+      googleDriveAccountEmail:
+          googleDriveAccountEmail ?? this.googleDriveAccountEmail,
+      autoGoogleDriveBackup:
+          autoGoogleDriveBackup ?? this.autoGoogleDriveBackup,
     );
   }
 
@@ -1508,6 +1721,13 @@ class AppSettings {
     'lastSeenWhatsNewVersion': lastSeenWhatsNewVersion,
     'backupFolderPath': backupFolderPath,
     'hideSchoolScheduleInCalendar': hideSchoolScheduleInCalendar,
+    'hiddenDashboardSections': hiddenDashboardSections,
+    'dashboardSectionOrder': dashboardSectionOrder,
+    if (lastGoogleDriveBackupDate != null)
+      'lastGoogleDriveBackupDate': lastGoogleDriveBackupDate,
+    if (googleDriveAccountEmail != null)
+      'googleDriveAccountEmail': googleDriveAccountEmail,
+    'autoGoogleDriveBackup': autoGoogleDriveBackup,
   };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -1548,6 +1768,18 @@ class AppSettings {
     final backupFolderPathValue = json['backupFolderPath'];
     final hideSchoolScheduleInCalendarValue =
         json['hideSchoolScheduleInCalendar'];
+    final hiddenDashboardSectionsValue = json['hiddenDashboardSections'];
+    final dashboardSectionOrderValue = json['dashboardSectionOrder'];
+    final storedDashboardOrder = dashboardSectionOrderValue is List
+        ? dashboardSectionOrderValue.whereType<String>().toSet().toList()
+        : <String>[];
+    const knownDashboardSections = defaultDashboardSectionOrder;
+    final safeDashboardOrder = <String>[
+      ...storedDashboardOrder.where(knownDashboardSections.contains),
+      ...knownDashboardSections.where(
+        (section) => !storedDashboardOrder.contains(section),
+      ),
+    ];
 
     return AppSettings(
       themeMode: safeThemeMode,
@@ -1573,6 +1805,15 @@ class AppSettings {
           : '',
       hideSchoolScheduleInCalendar: hideSchoolScheduleInCalendarValue is bool
           ? hideSchoolScheduleInCalendarValue
+          : false,
+      hiddenDashboardSections: hiddenDashboardSectionsValue is List
+          ? hiddenDashboardSectionsValue.whereType<String>().toSet().toList()
+          : const [],
+      dashboardSectionOrder: safeDashboardOrder,
+      lastGoogleDriveBackupDate: json['lastGoogleDriveBackupDate'] as String?,
+      googleDriveAccountEmail: json['googleDriveAccountEmail'] as String?,
+      autoGoogleDriveBackup: json['autoGoogleDriveBackup'] is bool
+          ? json['autoGoogleDriveBackup'] as bool
           : false,
     );
   }

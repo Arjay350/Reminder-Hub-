@@ -21,27 +21,20 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Ink(
+            padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF141A2E) : Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isDark ? const Color(0xFF1E294B) : color.withValues(alpha: 0.15),
-              width: 1.2,
+              color: theme.colorScheme.outlineVariant,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark ? Colors.black.withValues(alpha: 0.15) : color.withValues(alpha: 0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,7 +64,7 @@ class StatCard extends StatelessWidget {
                 title,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               if (subtitle != null) ...[
@@ -84,6 +77,7 @@ class StatCard extends StatelessWidget {
                 ),
               ],
             ],
+          ),
           ),
         ),
       ),

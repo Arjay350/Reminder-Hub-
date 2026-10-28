@@ -427,9 +427,10 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             views.setTextColor(R.id.widget_status_badge, Color.parseColor("#94A3B8"))
 
                             views.setTextViewText(R.id.widget_class_time, "All done for $dayName")
-                            views.setTextViewText(R.id.widget_countdown, "Done 🎉")
-                            views.setTextColor(R.id.widget_countdown, Color.parseColor("#22C55E"))
-                            views.setViewVisibility(R.id.widget_countdown_container, View.VISIBLE)
+                            // A completed day has no countdown target. Hiding the
+                            // chronometer also clears any prior class target held
+                            // by RemoteViews when the widget transitions state.
+                            views.setViewVisibility(R.id.widget_countdown_container, View.GONE)
 
                             views.setTextViewText(R.id.widget_class_subject, "You\'re done for today 🎉")
 
@@ -558,32 +559,30 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
         }
 
         private fun setCountdown(views: RemoteViews, targetMinute: Int, prefix: String) {
-            val target = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, targetMinute / 60)
-                set(Calendar.MINUTE, targetMinute % 60)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
+            val now = Calendar.getInstance()
+            val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+            val diffMinutes = targetMinute - nowMinutes
+
+            // Stop any running Chronometer on API 24+ so it does not count into negative numbers
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                try {
+                    views.setChronometer(R.id.widget_countdown, SystemClock.elapsedRealtime(), null, false)
+                } catch (_: Exception) {}
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                val elapsedRealtimeTarget = SystemClock.elapsedRealtime() +
-                    (target.timeInMillis - System.currentTimeMillis())
-                views.setChronometer(
-                    R.id.widget_countdown,
-                    elapsedRealtimeTarget,
-                    "$prefix %s",
-                    true
-                )
-                views.setChronometerCountDown(R.id.widget_countdown, true)
-            } else {
-                val remainingMinutes = ((target.timeInMillis - System.currentTimeMillis()) / 60000L)
-                    .toInt()
-                    .coerceAtLeast(0)
-                views.setTextViewText(
-                    R.id.widget_countdown,
-                    "$prefix ${formatDuration(remainingMinutes)}"
-                )
+            val isStart = prefix.contains("Start", ignoreCase = true)
+            val countdownText = when {
+                diffMinutes <= 0 -> if (isStart) "Starting now" else "Ending now"
+                diffMinutes == 1 -> "$prefix < 1m"
+                diffMinutes < 60 -> "$prefix ${diffMinutes}m"
+                else -> {
+                    val h = diffMinutes / 60
+                    val m = diffMinutes % 60
+                    if (m == 0) "$prefix ${h}h" else "$prefix ${h}h ${m}m"
+                }
             }
+
+            views.setTextViewText(R.id.widget_countdown, countdownText)
         }
 
         fun getReminderHubWeekday(cal: Calendar): Int {

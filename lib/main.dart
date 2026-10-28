@@ -13,6 +13,8 @@ import 'services/notification_service.dart';
 import 'services/password_route_observer.dart';
 import 'services/widget_service.dart';
 import 'services/pet_service.dart';
+import 'services/google_drive_backup_service.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +70,16 @@ class _ReminderHubAppState extends State<ReminderHubApp>
         await NotificationService.instance.rescheduleAll();
       } catch (e) {
         debugPrint('Post-frame notification reconciliation error: $e');
+      }
+      try {
+        await GoogleDriveBackupService.instance.initialize();
+        final settings = HiveService.instance.getSettings();
+        if (settings.autoGoogleDriveBackup &&
+            GoogleDriveBackupService.instance.isSignedIn) {
+          unawaited(GoogleDriveBackupService.instance.createBackup());
+        }
+      } catch (e) {
+        debugPrint('Auto cloud backup error: $e');
       }
     });
   }

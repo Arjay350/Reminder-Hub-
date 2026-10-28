@@ -704,6 +704,7 @@ void main() {
           foodInventory: 0,
         );
         final supportedTaskIds = {
+          'diary_entry',
           'school_schedule',
           'school_class',
           'school_all',

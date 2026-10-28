@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/utilities/formatters.dart';
 import '../../models/app_models.dart';
+import '../../models/diary_models.dart';
 import '../../services/hive_service.dart';
+import '../../services/notebook_service.dart';
+import '../diary_notes/diary_notes_screen.dart';
 
 class GlobalSearchScreen extends StatefulWidget {
   const GlobalSearchScreen({super.key});
@@ -20,6 +23,8 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   List<UserAccount> _userAccounts = [];
   List<GasPurchase> _gasPurchases = [];
   List<Birthday> _birthdays = [];
+  List<DiaryEntry> _diaryEntries = [];
+  List<NotebookNote> _notes = [];
 
   String _query = '';
 
@@ -39,6 +44,8 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       _userAccounts = _hive.getUserAccounts();
       _gasPurchases = _hive.getGasPurchases();
       _birthdays = _hive.getBirthdays();
+      _diaryEntries = NotebookService.instance.getDiaryEntries();
+      _notes = NotebookService.instance.getNotes();
     });
   }
 
@@ -114,13 +121,27 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               )
               .toList();
 
+    final matchedDiaryEntries = q.isEmpty
+        ? <DiaryEntry>[]
+        : _diaryEntries
+              .where((entry) => NotebookService.instance.diaryMatches(entry, q))
+              .toList();
+
+    final matchedNotes = q.isEmpty
+        ? <NotebookNote>[]
+        : _notes
+              .where((note) => NotebookService.instance.noteMatches(note, q))
+              .toList();
+
     final totalMatches =
         matchedReminders.length +
         matchedBills.length +
         matchedAIAccounts.length +
         matchedUserAccounts.length +
         matchedGas.length +
-        matchedBirthdays.length;
+        matchedBirthdays.length +
+        matchedDiaryEntries.length +
+        matchedNotes.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -128,7 +149,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
           controller: _searchController,
           autofocus: true,
           decoration: const InputDecoration(
-            hintText: 'Search all reminders, bills, accounts, gas...',
+            hintText: 'Search reminders, bills, accounts, diary, notes...',
             border: InputBorder.none,
           ),
           onChanged: (val) => setState(() => _query = val),
@@ -246,6 +267,56 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                       ),
                       title: Text(b.name),
                       subtitle: Text('${b.relationship} • ${b.formattedDate}'),
+                    ),
+                  ),
+                ],
+                if (matchedDiaryEntries.isNotEmpty) ...[
+                  _sectionHeader('Diary (${matchedDiaryEntries.length})'),
+                  ...matchedDiaryEntries.map(
+                    (entry) => ListTile(
+                      leading: const Icon(Icons.menu_book_outlined),
+                      title: Text(entry.displayTitle),
+                      subtitle: Text(
+                        '${Formatters.formatShortDate(entry.createdAt)} • ${entry.content.replaceAll(RegExp(r"\s+"), " ").trim()}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DiaryNotesScreen(
+                            initialDiaryEntryId: entry.id,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (matchedNotes.isNotEmpty) ...[
+                  _sectionHeader('Notes (${matchedNotes.length})'),
+                  ...matchedNotes.map(
+                    (note) => ListTile(
+                      leading: Icon(
+                        note.isPinned
+                            ? Icons.push_pin_outlined
+                            : Icons.notes_outlined,
+                      ),
+                      title: Text(
+                        note.title.trim().isEmpty ? 'Untitled note' : note.title,
+                      ),
+                      subtitle: Text(
+                        '${note.category} • ${note.content.replaceAll(RegExp(r"\s+"), " ").trim()}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DiaryNotesScreen(
+                            initialTab: 1,
+                            initialNoteId: note.id,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],

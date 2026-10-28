@@ -342,6 +342,7 @@ class PetService {
     final prefs = preferences;
 
     const validTaskIds = {
+      'diary_entry',
       'school_schedule',
       'school_class',
       'school_all',
@@ -443,6 +444,13 @@ class PetService {
     });
 
     final tasks = <PetDailyTask>[
+      PetDailyTask(
+        id: 'diary_entry',
+        title: 'Write a diary entry',
+        category: 'Personal Growth',
+        foodReward: 1,
+        requiredCount: 1,
+      ),
       // School
       PetDailyTask(
         id: 'school_schedule',
@@ -517,6 +525,7 @@ class PetService {
         case 'study_25':
         case 'study_2_sessions':
         case 'pet_attention':
+        case 'diary_entry':
           return true;
         case 'school_class':
         case 'school_all':
@@ -571,6 +580,63 @@ class PetService {
         dailyTaskCompletionState: completionMap,
       ),
     );
+  }
+
+  void onDiaryMoodSelected(String? mood) {
+    if (!isEnabled || !preferences.interactionReactionsEnabled) return;
+
+    final reaction = switch (mood) {
+      'Happy' => (
+        PetState.happy,
+        PetMood.happy,
+        "Aww, you're having a good day! I'm happy with you!",
+      ),
+      'Sad' => (
+        PetState.worried,
+        PetMood.worried,
+        "It's okay to feel sad sometimes. I'm here with you.",
+      ),
+      'Angry' => (
+        PetState.worried,
+        PetMood.worried,
+        "Take a deep breath. You don't have to deal with everything at once.",
+      ),
+      'Calm' => (
+        PetState.idle,
+        PetMood.neutral,
+        "You seem peaceful today. Let's enjoy this moment.",
+      ),
+      'Exhausted' => (
+        PetState.sleeping,
+        PetMood.sleepy,
+        "You worked hard today. Don't forget to get some rest.",
+      ),
+      'Stressed' => (
+        PetState.worried,
+        PetMood.worried,
+        "It's been a lot today. Take a little time for yourself.",
+      ),
+      'Productive' => (
+        PetState.celebrating,
+        PetMood.excited,
+        "Look at you getting things done! I'm proud of you!",
+      ),
+      _ => null,
+    };
+    if (reaction == null) return;
+
+    stateNotifier.value = reaction.$1;
+    moodNotifier.value = reaction.$2;
+    if (reaction.$1 == PetState.celebrating) {
+      effectTriggerNotifier.value++;
+    }
+    _setSpeech(reaction.$3, duration: const Duration(seconds: 5));
+    _reactionResetTimer?.cancel();
+    _reactionResetTimer = Timer(const Duration(seconds: 5), () {
+      if (!_isSuspended) {
+        _scheduleReturnToIdle(delay: const Duration(seconds: 5));
+      }
+    });
   }
 
   /// Claims the food reward for a completed task.

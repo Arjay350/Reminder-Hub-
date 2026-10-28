@@ -1,12 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/security/security_service.dart';
 import '../../models/app_models.dart';
 import '../../services/backup_service.dart';
+import '../../services/google_drive_backup_service.dart';
+import '../../core/utilities/formatters.dart';
 import '../../services/notification_service.dart';
 import '../../services/hive_service.dart';
 import '../../services/widget_service.dart';
 import '../../services/pet_service.dart';
+import '../../services/feedback_service.dart';
 import '../../models/pet_models.dart';
 import '../../widgets/custom_card.dart';
 import '../../widgets/profile_image_cropper_dialog.dart';
@@ -27,6 +31,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final HiveService _hive = HiveService.instance;
   late AppSettings _settings;
   bool _loaded = false;
+  bool _isGoogleDriveBackingUp = false;
+  bool _isGoogleDriveRestoring = false;
+  bool _isOpeningFeedback = false;
 
   @override
   void initState() {
@@ -664,6 +671,258 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
+          // Google Drive Cloud Backup Section
+          _sectionHeader('Google Drive Cloud Backup'),
+          CustomCard(
+            padding: EdgeInsets.zero,
+            child: ValueListenableBuilder<GoogleSignInAccount?>(
+              valueListenable:
+                  GoogleDriveBackupService.instance.currentUserNotifier,
+              builder: (context, user, _) {
+                final isConnected = user != null;
+                final lastBackup = _settings.lastGoogleDriveBackupDate;
+                String lastBackupSubtitle;
+                if (lastBackup != null && lastBackup.isNotEmpty) {
+                  try {
+                    final dt = DateTime.parse(lastBackup).toLocal();
+                    lastBackupSubtitle =
+                        'Last backup: ${Formatters.formatDate(dt)} at ${Formatters.formatTime(dt)}';
+                  } catch (_) {
+                    lastBackupSubtitle = 'Last backup: $lastBackup';
+                  }
+                } else {
+                  lastBackupSubtitle = 'No cloud backups created yet';
+                }
+
+                return Column(
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 6,
+                      ),
+                      leading: isConnected
+                          ? CircleAvatar(
+                              backgroundColor: Colors.blue.withValues(
+                                alpha: 0.15,
+                              ),
+                              backgroundImage: user.photoUrl != null
+                                  ? NetworkImage(user.photoUrl!)
+                                  : null,
+                              child: user.photoUrl == null
+                                  ? Text(
+                                      user.displayName?.isNotEmpty == true
+                                          ? user.displayName![0].toUpperCase()
+                                          : 'G',
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            )
+                          : _settingsIconContainer(
+                              Icons.cloud_sync_outlined,
+                              Colors.blue,
+                            ),
+                      title: Text(
+                        isConnected
+                            ? (user.displayName ?? 'Google Account')
+                            : 'Connect Google Account',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      subtitle: Text(
+                        isConnected
+                            ? user.email
+                            : 'Sign in to back up reminders & data to Google Drive',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: isConnected
+                          ? OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                              ),
+                              onPressed: _handleGoogleSignOut,
+                              child: const Text('Disconnect'),
+                            )
+                          : FilledButton(
+                              style: FilledButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              onPressed: _handleGoogleSignIn,
+                              child: const Text('Connect'),
+                            ),
+                    ),
+                    const Divider(
+                      height: 1,
+                      indent: 20,
+                      endIndent: 20,
+                      color: Color(0xFF1E294B),
+                    ),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      leading: _settingsIconContainer(
+                        Icons.cloud_upload_outlined,
+                        Colors.blue,
+                      ),
+                      title: const Text(
+                        'Back Up to Google Drive',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      subtitle: Text(
+                        lastBackupSubtitle,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: _isGoogleDriveBackingUp
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.chevron_right, size: 20),
+                      onTap: _isGoogleDriveBackingUp
+                          ? null
+                          : _handleGoogleDriveBackup,
+                    ),
+                    const Divider(
+                      height: 1,
+                      indent: 20,
+                      endIndent: 20,
+                      color: Color(0xFF1E294B),
+                    ),
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      leading: _settingsIconContainer(
+                        Icons.cloud_download_outlined,
+                        Colors.green,
+                      ),
+                      title: const Text(
+                        'Restore from Google Drive',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Download and safely restore from cloud backup',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      trailing: _isGoogleDriveRestoring
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.chevron_right, size: 20),
+                      onTap: _isGoogleDriveRestoring
+                          ? null
+                          : _handleGoogleDriveRestore,
+                    ),
+                    const Divider(
+                      height: 1,
+                      indent: 20,
+                      endIndent: 20,
+                      color: Color(0xFF1E294B),
+                    ),
+                    SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      secondary: _settingsIconContainer(
+                        Icons.sync_outlined,
+                        Colors.teal,
+                      ),
+                      title: const Text(
+                        'Auto-Backup to Cloud',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Automatically backs up when app starts (if signed in)',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: _settings.autoGoogleDriveBackup,
+                      onChanged: (val) async {
+                        final updated = _settings.copyWith(
+                          autoGoogleDriveBackup: val,
+                        );
+                        await _saveSettings(updated);
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Feedback Section
+          _sectionHeader('Feedback'),
+          CustomCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 4,
+                  ),
+                  minVerticalPadding: 12,
+                  leading: _settingsIconContainer(
+                    Icons.feedback_outlined,
+                    const Color(0xFF14B8A6),
+                  ),
+                  title: const Text(
+                    'Send Feedback',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  subtitle: const Text(
+                    'Report bugs and suggest improvements',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  trailing: _isOpeningFeedback
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chevron_right, size: 20),
+                  onTap: _isOpeningFeedback ? null : _openFeedbackForm,
+                ),
+                const Divider(height: 1, indent: 20, endIndent: 20),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  child: Text(
+                    'Feedback opens through Google Forms. Information you choose to submit, including your email address if requested, is collected through Google Forms. ReminderHub does not automatically send your personal app data with this feedback.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // About Section
           _sectionHeader('About & Creator'),
           CustomCard(
@@ -698,6 +957,188 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openFeedbackForm() async {
+    if (_isOpeningFeedback) return;
+    setState(() => _isOpeningFeedback = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final uri = FeedbackService.responderUri;
+      if (uri == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('The feedback form link is unavailable.')),
+        );
+        return;
+      }
+      final opened = await FeedbackService.openFeedbackForm();
+      if (!mounted) return;
+      if (!opened) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open Google Forms. Check your internet connection and try again.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Could not open the feedback form. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isOpeningFeedback = false);
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      await GoogleDriveBackupService.instance.signIn();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google account connected.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not connect to Google: $error')),
+      );
+    }
+  }
+
+  Future<void> _handleGoogleSignOut() async {
+    try {
+      await GoogleDriveBackupService.instance.signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google account disconnected.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not disconnect Google account: $error')),
+      );
+    }
+  }
+
+  Future<void> _handleGoogleDriveBackup() async {
+    if (_isGoogleDriveBackingUp) return;
+    setState(() => _isGoogleDriveBackingUp = true);
+    try {
+      final result = await GoogleDriveBackupService.instance.createBackup();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.success
+                ? 'Backup uploaded to Google Drive.'
+                : 'Backup failed: ${result.errorMessage ?? 'Unknown error'}',
+          ),
+        ),
+      );
+      if (result.success) {
+        await _loadSettings();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Backup failed: $error')));
+    } finally {
+      if (mounted) setState(() => _isGoogleDriveBackingUp = false);
+    }
+  }
+
+  Future<void> _handleGoogleDriveRestore() async {
+    if (_isGoogleDriveRestoring) return;
+    setState(() => _isGoogleDriveRestoring = true);
+    try {
+      final backups = await GoogleDriveBackupService.instance.listBackups();
+      if (!mounted) return;
+      if (backups.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No Google Drive backups were found.')),
+        );
+        return;
+      }
+
+      final selectedBackup = await showDialog<GoogleDriveBackupFile>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Choose a backup to restore'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final backup in backups)
+                  ListTile(
+                    title: Text(backup.name),
+                    subtitle: Text(Formatters.formatDate(backup.createdTime)),
+                    onTap: () => Navigator.of(dialogContext).pop(backup),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+      if (selectedBackup == null || !mounted) return;
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Restore this backup?'),
+          content: const Text(
+            'Restoring replaces the current local data. A safety snapshot will be used if the restore fails.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Restore'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+
+      final result = await GoogleDriveBackupService.instance.restoreBackup(
+        selectedBackup.id,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.success
+                ? 'Backup restored successfully.'
+                : 'Restore failed: ${result.errorMessage ?? 'Unknown error'}',
+          ),
+        ),
+      );
+      if (result.success) await _loadSettings();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not restore Google Drive backup: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isGoogleDriveRestoring = false);
+    }
   }
 
   Widget _sectionHeader(String title) {

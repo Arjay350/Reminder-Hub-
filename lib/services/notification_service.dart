@@ -477,10 +477,11 @@ class NotificationService {
   /// - Yearly ("Yearly" -> `DateTimeComponents.dateAndTime` with leap-year clamping)
   /// - Custom reminder offsets (e.g. "15 minutes", "45 minutes", "1 hour", "Custom: 30 minutes")
   Future<void> scheduleReminderNotification(Reminder reminder) async {
-    if (kIsWeb || reminder.completed) return;
+    if (kIsWeb) return;
 
     final id = _idFromUuid(reminder.id);
     await cancelNotification(id);
+    if (reminder.completed) return;
 
     final parts = reminder.time.split(':');
     final hour = int.tryParse(parts[0]) ?? 9;
@@ -934,11 +935,10 @@ class NotificationService {
       return;
     }
 
-    try {
-      await cancelAll();
-    } catch (e) {
-      debugPrint('NotificationService.rescheduleAll: cancelAll error: $e');
-    }
+    // Keep existing alarms in place while rebuilding from Hive. cancelAll()
+    // here made startup reconciliation destructive: if any later schedule
+    // failed, valid notifications for unrelated data were lost. Deterministic
+    // IDs below replace existing items in place.
 
     // 1. Reminders
     try {
@@ -959,7 +959,21 @@ class NotificationService {
 
     // 2. School Class Timetable
     try {
-      for (final schoolClass in hive.getSchoolClasses()) {
+      final schoolClasses = hive.getSchoolClasses();
+      final activeIds = schoolClasses.map((item) => item.id).toSet();
+      // Remove stale school occurrences for classes deleted in Hive. Payloads
+      // identify ownership; no unrelated reminder/bill IDs are touched.
+      final pending = await _notificationsPlugin
+          .pendingNotificationRequests();
+      for (final request in pending) {
+        final payload = request.payload ?? '';
+        if (!payload.startsWith('school_class:')) continue;
+        final classId = payload.substring('school_class:'.length);
+        if (!activeIds.contains(classId)) {
+          await cancelNotification(request.id);
+        }
+      }
+      for (final schoolClass in schoolClasses) {
         try {
           await scheduleSchoolClassNotification(schoolClass);
         } catch (itemErr) {

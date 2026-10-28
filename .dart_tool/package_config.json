@@ -2,6 +2,12 @@
   "configVersion": 2,
   "packages": [
     {
+      "name": "_discoveryapis_commons",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/_discoveryapis_commons-1.0.8",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
       "name": "_fe_analyzer_shared",
       "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/_fe_analyzer_shared-67.0.0",
       "packageUri": "lib/",
@@ -84,6 +90,18 @@
       "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/audioplayers_windows-4.4.1",
       "packageUri": "lib/",
       "languageVersion": "3.6"
+    },
+    {
+      "name": "barcode",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/barcode-2.2.9",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "bidi",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/bidi-2.0.13",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "boolean_selector",
@@ -230,6 +248,12 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "extension_google_sign_in_as_googleapis_auth",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/extension_google_sign_in_as_googleapis_auth-3.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
       "name": "fake_async",
       "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/fake_async-1.3.3",
       "packageUri": "lib/",
@@ -293,7 +317,7 @@
       "name": "flutter",
       "rootUri": "file:///C:/flutter/packages/flutter",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.11"
     },
     {
       "name": "flutter_launcher_icons",
@@ -377,7 +401,7 @@
       "name": "flutter_test",
       "rootUri": "file:///C:/flutter/packages/flutter_test",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.11"
     },
     {
       "name": "flutter_timezone",
@@ -389,7 +413,7 @@
       "name": "flutter_web_plugins",
       "rootUri": "file:///C:/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.11"
     },
     {
       "name": "frontend_server_client",
@@ -402,6 +426,60 @@
       "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/glob-2.1.3",
       "packageUri": "lib/",
       "languageVersion": "3.3"
+    },
+    {
+      "name": "google_cloud",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/google_cloud-0.5.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "google_identity_services_web",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/google_identity_services_web-0.3.3+1",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "google_sign_in",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/google_sign_in-7.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "google_sign_in_android",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/google_sign_in_android-7.2.18",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
+    },
+    {
+      "name": "google_sign_in_ios",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/google_sign_in_ios-6.3.8",
+      "packageUri": "lib/",
+      "languageVersion": "3.11"
+    },
+    {
+      "name": "google_sign_in_platform_interface",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/google_sign_in_platform_interface-3.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "google_sign_in_web",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/google_sign_in_web-1.1.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "googleapis",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/googleapis-17.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "googleapis_auth",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/googleapis_auth-2.3.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
     },
     {
       "name": "graphs",
@@ -567,9 +645,9 @@
     },
     {
       "name": "matcher",
-      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.19",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.20",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.10"
     },
     {
       "name": "material_color_utilities",
@@ -579,7 +657,7 @@
     },
     {
       "name": "meta",
-      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.18.0",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.19.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
@@ -606,6 +684,12 @@
       "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "path_parsing",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/path_parsing-1.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
     },
     {
       "name": "path_provider",
@@ -642,6 +726,12 @@
       "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_windows-2.3.0",
       "packageUri": "lib/",
       "languageVersion": "3.2"
+    },
+    {
+      "name": "pdf",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/pdf-3.13.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.12"
     },
     {
       "name": "permission_handler",
@@ -728,6 +818,12 @@
       "languageVersion": "3.6"
     },
     {
+      "name": "qr",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/qr-3.0.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "record_use",
       "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/record_use-0.6.0",
       "packageUri": "lib/",
@@ -767,7 +863,7 @@
       "name": "sky_engine",
       "rootUri": "file:///C:/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.11"
     },
     {
       "name": "source_gen",
@@ -825,9 +921,9 @@
     },
     {
       "name": "test_api",
-      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.11",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.12",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.10"
     },
     {
       "name": "timezone",
@@ -903,9 +999,9 @@
     },
     {
       "name": "vector_math",
-      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0",
+      "rootUri": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.4.3",
       "packageUri": "lib/",
-      "languageVersion": "3.1"
+      "languageVersion": "3.10"
     },
     {
       "name": "vm_service",
@@ -975,8 +1071,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.12.2",
+  "generatorVersion": "3.13.5",
   "flutterRoot": "file:///C:/flutter",
-  "flutterVersion": "3.44.8",
+  "flutterVersion": "3.47.6",
   "pubCache": "file:///C:/Users/rjxas/AppData/Local/Pub/Cache"
 }
