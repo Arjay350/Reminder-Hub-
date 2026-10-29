@@ -89,27 +89,33 @@ class _BillsScreenState extends State<BillsScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Upcoming Unpaid',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Upcoming Unpaid',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      Formatters.formatCurrency(totalUnpaidAmount),
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
+                      const SizedBox(height: 6),
+                      FittedBox(
+                        alignment: Alignment.centerLeft,
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          Formatters.formatCurrency(totalUnpaidAmount),
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -267,33 +273,32 @@ class _BillsScreenState extends State<BillsScreen> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  Formatters.formatCurrency(
-                                                    bill.amount,
-                                                  ),
-                                                  style: TextStyle(
-                                                    color: isPaid
-                                                        ? Colors.grey
-                                                        : null,
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.w800,
-                                                    letterSpacing: -.4,
-                                                  ),
-                                                ),
+                                          FittedBox(
+                                            alignment: Alignment.centerLeft,
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              Formatters.formatCurrency(
+                                                bill.amount,
                                               ),
-                                              AppStatusBadge(
-                                                label: urgencyLabel,
-                                                color: urgencyColor,
-                                                icon: isPaid
-                                                    ? Icons.check_circle_outline
-                                                    : isOverdue
-                                                    ? Icons.error_outline
-                                                    : Icons.schedule_outlined,
+                                              style: TextStyle(
+                                                color: isPaid
+                                                    ? Colors.grey
+                                                    : null,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: -.4,
                                               ),
-                                            ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          AppStatusBadge(
+                                            label: urgencyLabel,
+                                            color: urgencyColor,
+                                            icon: isPaid
+                                                ? Icons.check_circle_outline
+                                                : isOverdue
+                                                ? Icons.error_outline
+                                                : Icons.schedule_outlined,
                                           ),
                                           const SizedBox(height: 3),
                                           Row(
