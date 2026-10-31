@@ -90,6 +90,46 @@ void main() {
         );
       },
     );
+
+    test('occursOnDate recurs every year and computes ageOnYear correctly', () {
+      final birthday = Birthday(
+        id: 'b-apr17',
+        name: 'Alex',
+        birthDate: DateTime(2006, 4, 17),
+        yearKnown: true,
+      );
+
+      // Birthday should recur on April 17 in every year
+      expect(birthday.occursOnDate(DateTime(2006, 4, 17)), isTrue);
+      expect(birthday.occursOnDate(DateTime(2024, 4, 17)), isTrue);
+      expect(birthday.occursOnDate(DateTime(2026, 4, 17)), isTrue);
+      expect(birthday.occursOnDate(DateTime(2030, 4, 17)), isTrue);
+
+      // Different dates should not match
+      expect(birthday.occursOnDate(DateTime(2026, 4, 18)), isFalse);
+      expect(birthday.occursOnDate(DateTime(2026, 5, 17)), isFalse);
+
+      // Age calculation by year
+      expect(birthday.ageOnYear(2006), 0);
+      expect(birthday.ageOnYear(2024), 18);
+      expect(birthday.ageOnYear(2026), 20);
+      expect(birthday.ageOnYear(2030), 24);
+      expect(birthday.ageOnYear(2000), isNull);
+    });
+
+    test('nextBirthdayDateFor matches today even when reference has time of day', () {
+      final birthday = Birthday(
+        id: 'b-today',
+        name: 'Jordan',
+        birthDate: DateTime(2006, 4, 17),
+      );
+
+      // Reference is at 10:30:45 AM on the birthday
+      final refWithTime = DateTime(2026, 4, 17, 10, 30, 45);
+      final next = birthday.nextBirthdayDateFor(refWithTime);
+      expect(next, DateTime(2026, 4, 17));
+      expect(birthday.daysUntilNextFor(refWithTime), 0);
+    });
   });
 
   group('Birthday phrase parsing', () {
@@ -146,4 +186,44 @@ void main() {
 
     expect(find.text('Add Birthday'), findsOneWidget);
   });
+
+  testWidgets(
+    'clicking "This is my birthday" hides the relationship selector',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: BirthdayDialog(),
+          ),
+        ),
+      );
+
+      // Initially relationship section is visible
+      expect(find.text('Relationship'), findsOneWidget);
+      expect(find.text('Family'), findsOneWidget);
+
+      // Tap "🎂 This is my birthday" checkbox
+      final checkboxFinder = find.text('🎂 This is my birthday');
+      expect(checkboxFinder, findsOneWidget);
+      await tester.tap(checkboxFinder);
+      await tester.pumpAndSettle();
+
+      // Relationship section should now be hidden
+      expect(find.text('Relationship'), findsNothing);
+      expect(find.text('Family'), findsNothing);
+
+      // Tap checkbox again to uncheck
+      await tester.tap(checkboxFinder);
+      await tester.pumpAndSettle();
+
+      // Relationship section should be visible again
+      expect(find.text('Relationship'), findsOneWidget);
+      expect(find.text('Family'), findsOneWidget);
+    },
+  );
 }

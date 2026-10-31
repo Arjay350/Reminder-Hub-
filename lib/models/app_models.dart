@@ -60,12 +60,29 @@ class Birthday {
     final day = birthDate.day;
     final nextYear = reference.year;
     final candidate = _safeBirthdayDate(nextYear, month, day);
-    if (!candidate.isBefore(
-      DateTime(reference.year, reference.month, reference.day),
-    )) {
+    final refDate = DateTime(reference.year, reference.month, reference.day);
+    if (!candidate.isBefore(refDate)) {
       return candidate;
     }
     return _safeBirthdayDate(nextYear + 1, month, day);
+  }
+
+  bool occursOnDate(DateTime date) {
+    // The stored year is the birth year (for age calculation), not a limit on
+    // when the birthday appears in the calendar. Match its month/day in the
+    // year currently being displayed.
+    final celebration = celebrationDateForYear(date.year);
+    return date.month == celebration.month && date.day == celebration.day;
+  }
+
+  DateTime celebrationDateForYear(int year) {
+    return _safeBirthdayDate(year, birthDate.month, birthDate.day);
+  }
+
+  int? ageOnYear(int year) {
+    if (!yearKnown || birthDate.year <= 0) return null;
+    final age = year - birthDate.year;
+    return age >= 0 ? age : null;
   }
 
   String formattedDateFor(DateTime reference) {

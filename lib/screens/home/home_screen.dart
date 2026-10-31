@@ -746,13 +746,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          birthday.name,
+                          birthday.isUserBirthday
+                              ? '🎂 My Birthday'
+                              : birthday.name,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
                         ),
-                        if (birthday.relationship.isNotEmpty)
+                        if (!birthday.isUserBirthday &&
+                            birthday.relationship.isNotEmpty &&
+                            birthday.relationship != 'Self')
                           Text(
                             birthday.relationship,
                             style: TextStyle(

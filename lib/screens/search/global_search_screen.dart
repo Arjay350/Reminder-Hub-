@@ -284,8 +284,17 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                         Icons.cake_rounded,
                         color: Color(0xFFF472B6),
                       ),
-                      title: Text(b.name),
-                      subtitle: Text('${b.relationship} • ${b.formattedDate}'),
+                      title: Text(
+                        b.isUserBirthday ? '🎂 My Birthday' : b.name,
+                      ),
+                      subtitle: Text(
+                        b.isUserBirthday
+                            ? b.formattedDate
+                            : (b.relationship.isNotEmpty &&
+                                    b.relationship != 'Self'
+                                ? '${b.relationship} • ${b.formattedDate}'
+                                : b.formattedDate),
+                      ),
                     ),
                   ),
                 ],

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'widgets/backup_passphrase_dialog.dart';
 import 'core/security/security_service.dart';
 import 'core/theme/app_theme.dart';
 import 'screens/ai_accounts/ai_accounts_screen.dart';
@@ -77,23 +76,15 @@ class _ReminderHubAppState extends State<ReminderHubApp>
         if (settings.autoGoogleDriveBackup &&
             GoogleDriveBackupService.instance.isSignedIn) {
           if (!mounted) return;
-          final passphrase = await showBackupPassphraseDialog(
-            context,
-            restoring: false,
-          );
-          if (passphrase != null && mounted) {
-            final result = await GoogleDriveBackupService.instance.createBackup(
-              passphrase: passphrase,
-            );
-            if (!result.success && mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Automatic backup failed: ${result.errorMessage ?? 'Unknown error'}',
-                  ),
+          final result = await GoogleDriveBackupService.instance.createBackup();
+          if (!result.success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Automatic backup failed: ${result.errorMessage ?? 'Unknown error'}',
                 ),
-              );
-            }
+              ),
+            );
           }
         }
       } catch (e) {

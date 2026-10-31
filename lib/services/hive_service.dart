@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -42,8 +41,6 @@ class HiveService {
   Box<String>? _studySubjectsBox;
   Box<String>? _petBox;
   bool _initialized = false;
-  String? _credentialEncryptionKey;
-  bool _credentialStorageLocked = false;
   final List<UserAccount> _userAccountCache = [];
 
   Future<void> init({
@@ -81,7 +78,7 @@ class HiveService {
     _initialized = true;
 
     try {
-      await _initializeUserAccountEncryption(testCredentialEncryptionKey);
+      await _loadUserAccounts();
       if (runMigrations) {
         await _runMigrations();
         await _initializeDiaryEntryDateIndex();
@@ -94,16 +91,16 @@ class HiveService {
     }
   }
 
-  Future<void> _initializeUserAccountEncryption(String? testKey) async {
+  Future<void> _loadUserAccounts() async {
     final box = _userAccountsBox!;
-    if (box.isEmpty) {
-      _credentialEncryptionKey = testKey;
-      _credentialStorageLocked = false;
-      return;
+    _userAccountCache.clear();
+    String? legacyKey;
+    try {
+      legacyKey = await SecurityService.instance.getAccountEncryptionKey();
+    } catch (_) {
+      // Legacy encrypted rows remain untouched if Android no longer has their
+      // old key. Plain account rows and the rest of the app remain available.
     }
-
-    final records = <MapEntry<dynamic, String>>[];
-    var hasEncryptedRecord = false;
     for (final entry in box.toMap().entries) {
       final raw = entry.value;
       final decoded = jsonDecode(raw);
@@ -111,69 +108,30 @@ class HiveService {
         throw const FormatException('Invalid saved account record.');
       }
       final record = Map<String, dynamic>.from(decoded);
-      hasEncryptedRecord |= EncryptionService.instance.isEncryptedAccountRecord(
-        record,
-      );
-      records.add(MapEntry(entry.key, raw));
-    }
-
-    String? key;
-    try {
-      key = testKey ?? await SecurityService.instance.getAccountEncryptionKey();
-    } catch (_) {
-      _credentialStorageLocked = true;
-      return;
-    }
-    if (key == null) {
-      if (hasEncryptedRecord) {
-        _credentialStorageLocked = true;
-        return;
+      var accountJson = raw;
+      if (EncryptionService.instance.isEncryptedAccountRecord(record)) {
+        if (legacyKey == null) continue;
+        try {
+          accountJson = await EncryptionService.instance.decryptAccountJson(
+            raw,
+            legacyKey,
+          );
+        } catch (_) {
+          continue;
+        }
       }
-      try {
-        key = _generateCredentialKey();
-        await SecurityService.instance.setAccountEncryptionKey(key);
-      } catch (_) {
-        _credentialStorageLocked = true;
-        return;
-      }
-    }
-    _credentialEncryptionKey = key;
-    _credentialStorageLocked = false;
-
-    _userAccountCache.clear();
-    for (final entry in records) {
-      final decoded = jsonDecode(entry.value) as Map;
-      final record = Map<String, dynamic>.from(decoded);
-      final isEncrypted = EncryptionService.instance.isEncryptedAccountRecord(
-        record,
-      );
-      final json = isEncrypted
-          ? await EncryptionService.instance.decryptAccountJson(
-              entry.value,
-              key,
-            )
-          : entry.value;
       final account = UserAccount.fromJson(
-        jsonDecode(json) as Map<String, dynamic>,
+        jsonDecode(accountJson) as Map<String, dynamic>,
       );
       if (account.id != entry.key) {
         throw const FormatException('Saved account identifier mismatch.');
       }
       _userAccountCache.add(account);
-      if (!isEncrypted) {
-        final encrypted = await EncryptionService.instance.encryptAccountJson(
-          entry.value,
-          key,
-        );
-        await box.put(entry.key, encrypted);
+      if (accountJson != raw) {
+        await box.put(entry.key, accountJson);
         await box.flush();
       }
     }
-  }
-
-  String _generateCredentialKey() {
-    final random = Random.secure();
-    return base64Encode(List<int>.generate(32, (_) => random.nextInt(256)));
   }
 
   Future<void> _runMigrations() async {
@@ -380,13 +338,6 @@ class HiveService {
   // --- User Accounts ---
   List<UserAccount> getUserAccounts() {
     if (_userAccountsBox == null) return [];
-    if (_credentialStorageLocked ||
-        (_userAccountsBox!.isNotEmpty && _credentialEncryptionKey == null)) {
-      throw StateError(
-        'Saved account credentials are locked because the device secure key is unavailable. '
-        'Your data has not been deleted; restore a passphrase-protected backup from Settings.',
-      );
-    }
     return List<UserAccount>.unmodifiable(_userAccountCache);
   }
 
@@ -417,19 +368,17 @@ class HiveService {
     await _userAccountsBox!.putAll(records);
     await _userAccountsBox!.flush();
     _userAccountCache.clear();
-    _credentialEncryptionKey = encryptionKey;
-    _credentialStorageLocked = records.isNotEmpty && encryptionKey == null;
-    if (encryptionKey == null) return;
     for (final entry in records.entries) {
       final decoded = jsonDecode(entry.value) as Map;
       final record = Map<String, dynamic>.from(decoded);
       final isEncrypted = EncryptionService.instance.isEncryptedAccountRecord(
         record,
       );
+      if (isEncrypted && encryptionKey == null) continue;
       final serialized = isEncrypted
           ? await EncryptionService.instance.decryptAccountJson(
               entry.value,
-              encryptionKey,
+              encryptionKey!,
             )
           : entry.value;
       final account = UserAccount.fromJson(
@@ -439,14 +388,8 @@ class HiveService {
         throw const FormatException('Saved account identifier mismatch.');
       }
       _userAccountCache.add(account);
-      if (!isEncrypted) {
-        await _userAccountsBox!.put(
-          entry.key,
-          await EncryptionService.instance.encryptAccountJson(
-            entry.value,
-            encryptionKey,
-          ),
-        );
+      if (isEncrypted) {
+        await _userAccountsBox!.put(entry.key, serialized);
       }
     }
     await _userAccountsBox!.flush();
@@ -454,27 +397,8 @@ class HiveService {
 
   Future<void> saveUserAccount(UserAccount account) async {
     await ensureInitialized();
-    var key = _credentialEncryptionKey;
-    if (key == null) {
-      key = await SecurityService.instance.getAccountEncryptionKey();
-      if (key == null) {
-        if (_userAccountsBox!.isNotEmpty) {
-          throw StateError(
-            'Cannot replace the secure key while encrypted account records exist.',
-          );
-        }
-        key = _generateCredentialKey();
-        await SecurityService.instance.setAccountEncryptionKey(key);
-      }
-      _credentialEncryptionKey = key;
-    }
-    _credentialStorageLocked = false;
     final serialized = jsonEncode(account.toJson());
-    final encrypted = await EncryptionService.instance.encryptAccountJson(
-      serialized,
-      key,
-    );
-    await _userAccountsBox!.put(account.id, encrypted);
+    await _userAccountsBox!.put(account.id, serialized);
     await _userAccountsBox!.flush();
     _userAccountCache.removeWhere((stored) => stored.id == account.id);
     _userAccountCache.add(account);
@@ -1022,17 +946,12 @@ class HiveService {
     await _studySubjectsBox?.flush();
     await _petBox?.flush();
     _userAccountCache.clear();
-    if (_userAccountsBox?.isEmpty == true) {
-      _credentialStorageLocked = false;
-    }
   }
 
   @visibleForTesting
   Future<void> resetForTesting() async {
     if (_initialized) await Hive.close();
     _resetBoxReferences();
-    _credentialEncryptionKey = null;
-    _credentialStorageLocked = false;
     _userAccountCache.clear();
     _initialized = false;
   }

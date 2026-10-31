@@ -70,7 +70,6 @@ class BackupService {
   }
 
   Future<String?> exportBackup({
-    required String passphrase,
     String? directoryPath,
     bool share = false,
   }) async {
@@ -110,10 +109,7 @@ class BackupService {
       'notebookEncryptionKey':
           await SecurityService.instance.getNotebookEncryptionKey(),
     };
-    final contents = await EncryptionService.instance.encryptBackupJson(
-      const JsonEncoder.withIndent('  ').convert(data),
-      passphrase,
-    );
+    final contents = const JsonEncoder.withIndent('  ').convert(data);
     if (Platform.isAndroid && !share) {
       final savedUri = await FilePicker.saveFile(
         fileName: fileName,
@@ -187,17 +183,28 @@ class BackupService {
     return file.path;
   }
 
-  Future<bool> importBackup({required String passphrase}) async {
+  Future<bool> importBackup({
+    String? passphrase,
+    Future<String?> Function()? requestPassphrase,
+  }) async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
       dialogTitle: 'Select a Reminder Hub backup',
     );
     if (result.isEmpty || result.first.path == null) return false;
-    return importBackupFromFile(
-      result.first.path!,
-      passphrase: passphrase,
-    );
+    final path = result.first.path!;
+    var selectedPassphrase = passphrase;
+    if (selectedPassphrase == null) {
+      final serialized = await File(path).readAsString();
+      final envelope = jsonDecode(serialized);
+      if (envelope is Map &&
+          envelope['format'] == EncryptionService.portableBackupFormat) {
+        selectedPassphrase = await requestPassphrase?.call();
+        if (selectedPassphrase == null) return false;
+      }
+    }
+    return importBackupFromFile(path, passphrase: selectedPassphrase);
   }
 
   Future<bool> importBackupFromFile(

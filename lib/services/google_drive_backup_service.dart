@@ -227,9 +227,7 @@ class GoogleDriveBackupService {
   // ---------------------------------------------------------------------------
 
   /// Creates a full, versioned, checksum-validated backup and uploads it to Google Drive appDataFolder.
-  Future<GoogleDriveBackupResult> createBackup({
-    required String passphrase,
-  }) async {
+  Future<GoogleDriveBackupResult> createBackup() async {
     try {
       final driveApi = await _getDriveApi(promptIfNecessary: true);
       final hive = HiveService.instance;
@@ -238,10 +236,7 @@ class GoogleDriveBackupService {
       final now = DateTime.now().toUtc();
       final backupData = await _buildBackupMap(hive, now);
 
-      final jsonString = await EncryptionService.instance.encryptBackupJson(
-        const JsonEncoder.withIndent('  ').convert(backupData),
-        passphrase,
-      );
+      final jsonString = const JsonEncoder.withIndent('  ').convert(backupData);
       final jsonBytes = utf8.encode(jsonString);
 
       final fileName = 'reminderhub_cloud_backup_${now.millisecondsSinceEpoch}.json';
@@ -349,7 +344,8 @@ class GoogleDriveBackupService {
   /// existing local data is restored without corruption.
   Future<GoogleDriveRestoreResult> restoreBackup(
     String fileId, {
-    required String passphrase,
+    String? passphrase,
+    Future<String?> Function()? requestPassphrase,
   }) async {
     final hive = HiveService.instance;
     await hive.ensureInitialized();
@@ -375,13 +371,22 @@ class GoogleDriveBackupService {
           errorMessage: 'Invalid backup file: root must be a JSON object.',
         );
       }
-      jsonContent =
-          downloadedMap['format'] == EncryptionService.portableBackupFormat
-          ? await EncryptionService.instance.decryptBackupJson(
-              downloaded,
-              passphrase,
-            )
-          : downloaded;
+      if (downloadedMap['format'] == EncryptionService.portableBackupFormat) {
+        final selectedPassphrase =
+            passphrase ?? await requestPassphrase?.call();
+        if (selectedPassphrase == null) {
+          return const GoogleDriveRestoreResult(
+            success: false,
+            errorMessage: 'A passphrase is required to restore this older backup.',
+          );
+        }
+        jsonContent = await EncryptionService.instance.decryptBackupJson(
+          downloaded,
+          selectedPassphrase,
+        );
+      } else {
+        jsonContent = downloaded;
+      }
     } catch (e) {
       return GoogleDriveRestoreResult(
         success: false,
