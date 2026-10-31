@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reminder_hub/widgets/diary_mood_filter.dart';
@@ -18,7 +16,7 @@ void main() {
   };
 
   for (final width in [320.0, 412.0, 600.0]) {
-    testWidgets('all moods fit at $width logical pixels', (tester) async {
+    testWidgets('mood dropdown fits at $width logical pixels', (tester) async {
       await tester.binding.setSurfaceSize(Size(width, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -39,11 +37,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.byType(DropdownButtonFormField<String?>), findsOneWidget);
+      expect(find.text('All Moods'), findsOneWidget);
+      await tester.tap(find.byType(DropdownButtonFormField<String?>));
+      await tester.pumpAndSettle();
       for (final entry in moods.entries) {
         expect(find.text(entry.key), findsOneWidget);
-        expect(find.text(entry.value), findsOneWidget);
       }
-      expect(find.text('All'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -71,36 +71,17 @@ void main() {
     );
 
     for (final mood in moods.keys) {
-      expect(
-        tester
-                .getSemantics(find.bySemanticsLabel('Filter diary by $mood'))
-                .flagsCollection
-                .isSelected ==
-            ui.Tristate.isTrue,
-        isFalse,
-      );
-      await tester.tap(find.text(mood));
+      await tester.tap(find.byType(DropdownButtonFormField<String?>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(mood).last);
       await tester.pumpAndSettle();
       expect(selectedMood, mood);
-      expect(
-        tester
-                .getSemantics(find.bySemanticsLabel('Filter diary by $mood'))
-                .flagsCollection
-                .isSelected ==
-            ui.Tristate.isTrue,
-        isTrue,
-      );
+      expect(find.text(mood), findsOneWidget);
     }
 
-    await tester.tap(find.text('Productive'));
+    await tester.tap(find.byType(DropdownButtonFormField<String?>));
     await tester.pumpAndSettle();
-    expect(selectedMood, isNull);
-
-    await tester.tap(find.text('Sad'));
-    await tester.pumpAndSettle();
-    expect(selectedMood, 'Sad');
-
-    await tester.tap(find.text('All'));
+    await tester.tap(find.text('All Moods').last);
     await tester.pumpAndSettle();
     expect(selectedMood, isNull);
     expect(tester.takeException(), isNull);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'widgets/backup_passphrase_dialog.dart';
 import 'core/security/security_service.dart';
 import 'core/theme/app_theme.dart';
 import 'screens/ai_accounts/ai_accounts_screen.dart';
@@ -14,7 +15,6 @@ import 'services/password_route_observer.dart';
 import 'services/widget_service.dart';
 import 'services/pet_service.dart';
 import 'services/google_drive_backup_service.dart';
-import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,7 +76,25 @@ class _ReminderHubAppState extends State<ReminderHubApp>
         final settings = HiveService.instance.getSettings();
         if (settings.autoGoogleDriveBackup &&
             GoogleDriveBackupService.instance.isSignedIn) {
-          unawaited(GoogleDriveBackupService.instance.createBackup());
+          if (!mounted) return;
+          final passphrase = await showBackupPassphraseDialog(
+            context,
+            restoring: false,
+          );
+          if (passphrase != null && mounted) {
+            final result = await GoogleDriveBackupService.instance.createBackup(
+              passphrase: passphrase,
+            );
+            if (!result.success && mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Automatic backup failed: ${result.errorMessage ?? 'Unknown error'}',
+                  ),
+                ),
+              );
+            }
+          }
         }
       } catch (e) {
         debugPrint('Auto cloud backup error: $e');

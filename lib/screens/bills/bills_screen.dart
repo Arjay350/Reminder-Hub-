@@ -24,6 +24,7 @@ class _BillsScreenState extends State<BillsScreen> {
 
   List<Bill> _bills = [];
   String _selectedFilter = 'Unpaid'; // All, Unpaid, Paid
+  final Set<String> _processingBillIds = {};
 
   @override
   void initState() {
@@ -58,7 +59,10 @@ class _BillsScreenState extends State<BillsScreen> {
 
     final totalUnpaidAmount = _bills
         .where((b) => b.getDisplayStatus() != 'paid')
-        .fold(0.0, (sum, item) => sum + item.amount);
+        .fold<double?>(0, (sum, item) {
+          if (sum == null || !(sum + item.amount).isFinite) return null;
+          return sum + item.amount;
+        });
 
     final unpaidCount = _bills
         .where((b) => b.getDisplayStatus() != 'paid')
@@ -106,7 +110,9 @@ class _BillsScreenState extends State<BillsScreen> {
                         alignment: Alignment.centerLeft,
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          Formatters.formatCurrency(totalUnpaidAmount),
+                          totalUnpaidAmount == null
+                              ? 'Total exceeds numeric display range'
+                              : Formatters.formatCurrency(totalUnpaidAmount),
                           style: theme.textTheme.headlineSmall?.copyWith(
                             color: theme.colorScheme.onSurface,
                             fontWeight: FontWeight.w800,
@@ -168,6 +174,7 @@ class _BillsScreenState extends State<BillsScreen> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final bill = filtered[index];
+                        final namePreview = Formatters.previewText(bill.name);
                         final displayStatus = bill.getDisplayStatus();
                         final displayDueDate = bill.getDisplayDueDate();
                         final isOverdue = displayStatus == 'overdue';
@@ -301,38 +308,37 @@ class _BillsScreenState extends State<BillsScreen> {
                                                 : Icons.schedule_outlined,
                                           ),
                                           const SizedBox(height: 3),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  bill.name,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                    decoration: isPaid
-                                                        ? TextDecoration
-                                                              .lineThrough
-                                                        : null,
-                                                    color: isPaid
-                                                        ? Colors.grey
-                                                        : null,
-                                                  ),
+                                          Text(
+                                            namePreview,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              decoration: isPaid
+                                                  ? TextDecoration.lineThrough
+                                                  : null,
+                                              color: isPaid
+                                                  ? Colors.grey
+                                                  : null,
+                                            ),
+                                          ),
+                                          if (bill.isRecurring)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 2,
+                                              ),
+                                              child: Text(
+                                                bill.repeat,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF10B981),
                                                 ),
                                               ),
-                                              if (bill.isRecurring)
-                                                Text(
-                                                  bill.repeat,
-                                                  style: const TextStyle(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF10B981),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
+                                            ),
                                         ],
                                       ),
                                       subtitle: Padding(
@@ -555,6 +561,15 @@ class _BillsScreenState extends State<BillsScreen> {
   }
 
   Future<void> _togglePaidStatus(Bill bill) async {
+    if (!_processingBillIds.add(bill.id)) return;
+    try {
+      await _applyPaidStatus(bill);
+    } finally {
+      _processingBillIds.remove(bill.id);
+    }
+  }
+
+  Future<void> _applyPaidStatus(Bill bill) async {
     // Toggling OFF (currently paid non-recurring bill -> unmark paid)
     if (bill.paid) {
       final updated = bill.copyWith(paid: false);
@@ -584,6 +599,8 @@ class _BillsScreenState extends State<BillsScreen> {
       if (mounted) _showPaymentFeedback('Bill marked as paid');
       return;
     }
+
+    if (bill.isOccurrencePaid(bill.dueDate)) return;
 
     // Recurring bill: calculate next occurrence and show confirmation
     final nextDate = bill.getNextOccurrence(bill.dueDate);

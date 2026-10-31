@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<SchoolClass> _schoolClasses = [];
   List<Bill> _bills = [];
   List<UserAccount> _userAccounts = [];
+  bool _accountStorageWarningShown = false;
   List<AIAccount> _aiAccounts = [];
   List<GasPurchase> _gasPurchases = [];
   List<Birthday> _birthdays = [];
@@ -291,11 +292,27 @@ class _HomeScreenState extends State<HomeScreen> {
     await _hive.ensureInitialized();
     if (!mounted) return;
     final settings = _hive.getSettings();
+    List<UserAccount> userAccounts;
+    try {
+      userAccounts = _hive.getUserAccounts();
+    } on StateError catch (error) {
+      userAccounts = [];
+      if (!_accountStorageWarningShown) {
+        _accountStorageWarningShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(error.message.toString())),
+            );
+          }
+        });
+      }
+    }
     setState(() {
       _reminders = _hive.getReminders();
       _schoolClasses = _hive.getSchoolClasses();
       _bills = _hive.getBills();
-      _userAccounts = _hive.getUserAccounts();
+      _userAccounts = userAccounts;
       _aiAccounts = _hive.getAIAccounts();
       _birthdays = _hive.getBirthdays();
       _activeStudyState = StudyService.instance.getActiveTimerState();
@@ -906,6 +923,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
+                          fontSize: _calculateUpcomingReminderFontSize(
+                            reminder.title,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -955,6 +975,20 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  double _calculateUpcomingReminderFontSize(String title) {
+    final trimmed = title.trim();
+    final length = trimmed.length;
+    if (length == 0) return 14.0;
+    final words = trimmed.split(RegExp(r'\s+'));
+    int maxWordLength = 0;
+    for (final w in words) {
+      if (w.length > maxWordLength) maxWordLength = w.length;
+    }
+    if (length > 36 || maxWordLength >= 16) return 11.5;
+    if (length > 22 || maxWordLength >= 11) return 12.5;
+    return 14.0;
   }
 
   DateTime _reminderDueAt(Reminder reminder) {
@@ -2039,14 +2073,32 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final labelColor = isDark
+        ? const Color(0xFFE6EAF2)
+        : const Color(0xFF1E293B);
+
     return ActionChip(
       avatar: Icon(icon, color: color, size: 18),
-      label: Text(label),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: labelColor,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+      labelStyle: TextStyle(
+        color: labelColor,
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+      ),
       onPressed: onTap,
       backgroundColor: color.withValues(
-        alpha: Theme.of(context).brightness == Brightness.dark ? .16 : .08,
+        alpha: isDark ? .16 : .08,
       ),
-      side: BorderSide(color: color.withValues(alpha: .22)),
+      side: BorderSide(color: color.withValues(alpha: isDark ? .35 : .22)),
     );
   }
 

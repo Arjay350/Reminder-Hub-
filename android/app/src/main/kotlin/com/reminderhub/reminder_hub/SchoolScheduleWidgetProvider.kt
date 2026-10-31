@@ -58,7 +58,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
         // First widget placed — kickstart the alarm chain immediately
-        scheduleNextAlarm(context, 1)
+        ensureAlarmScheduled(context)
     }
 
     override fun onDisabled(context: Context) {
@@ -76,13 +76,13 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
         /**
          * Ensures the alarm chain is always running. Safe to call repeatedly —
          * it reads the timetable data and schedules the next alarm at the
-         * appropriate class boundary time.
+         * exact millisecond of the next class boundary or periodic tick.
          */
         fun ensureAlarmScheduled(context: Context) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val rawJson = prefs.getString(KEY_TODAY_WIDGET_DATA, null)
-            val nextTickMinutes = computeNextTickMinutes(rawJson)
-            scheduleNextAlarm(context, nextTickMinutes)
+            val nextTriggerMillis = computeNextTriggerMillis(rawJson)
+            scheduleAlarmAt(context, nextTriggerMillis)
         }
 
         fun updateAllWidgets(context: Context, data: Map<String, Any>?) {
@@ -96,10 +96,6 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
             val componentName = ComponentName(context, SchoolScheduleWidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
 
-            // Compute next alarm from data BEFORE updating individual widgets
-            val rawJson = prefs.getString(KEY_TODAY_WIDGET_DATA, null)
-            val nextTickMinutes = computeNextTickMinutes(rawJson)
-
             for (appWidgetId in appWidgetIds) {
                 // Invalidate RemoteViewsFactory list collection
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_classes_list)
@@ -108,33 +104,44 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                 updateAppWidget(context, appWidgetManager, appWidgetId, options)
             }
 
-            // Always reschedule the next alarm — this is the key to real-time updates
-            scheduleNextAlarm(context, nextTickMinutes)
+            // Always reschedule the next alarm based on fresh state
+            val rawJson = prefs.getString(KEY_TODAY_WIDGET_DATA, null)
+            val nextTriggerMillis = computeNextTriggerMillis(rawJson)
+            scheduleAlarmAt(context, nextTriggerMillis)
         }
 
         /**
-         * Computes how many minutes until the next alarm tick.
-         * For real-time widget updates without manual refresh:
-         * - During the school day (from 60m before first class through all classes): ticks every 1 minute for live countdowns & instant state changes.
-         * - Before the school day window: ticks every 5 minutes.
-         * - After all classes today or on free days: ticks every 15 minutes (daytime) or at midnight rollover.
+         * Computes the exact epoch timestamp (in milliseconds) for the next alarm trigger.
+         *
+         * The schedule ensures:
+         * 1. During active window (from 60m before earliest class until latest class ends):
+         *    - Ticks every 1 minute on the minute (:00.250) for smooth countdown updates.
+         *    - Fires precisely at every class start time (:00.200) for instant UPCOMING -> CURRENT transition.
+         *    - Fires precisely at every class end time (:00.200) for instant CURRENT -> COMPLETED/NEXT transition.
+         * 2. Before active window:
+         *    - Wakes up right when the active window begins (earliestStart - 60m),
+         *      or every 15 minutes during the daytime.
+         * 3. After all classes today (or on free days):
+         *    - Wakes up at midnight (:00.500) to rollover to the next day's schedule,
+         *      or every 15 minutes during daytime (6am - 10pm).
          */
-        private fun computeNextTickMinutes(rawJson: String?): Int {
-            if (rawJson == null) return 5
+        fun computeNextTriggerMillis(rawJson: String?): Long {
+            val nowMillis = System.currentTimeMillis()
+            val cal = Calendar.getInstance()
+            val todayWeekday = getReminderHubWeekday(cal)
+            val nowMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+
+            val fallbackMillis = nowMillis + 5 * 60 * 1000L
+            if (rawJson == null) return fallbackMillis
 
             try {
                 val json = JSONObject(rawJson)
-                val cal = Calendar.getInstance()
-                val todayWeekday = getReminderHubWeekday(cal)
-                val nowMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-
                 val allClassesArray = json.optJSONArray("allClasses")
                     ?: json.optJSONArray("classes")
                     ?: JSONArray()
 
-                // Collect all today's class boundaries
-                val todayStartTimes = mutableListOf<Int>()
-                val todayEndTimes = mutableListOf<Int>()
+                val todayStartMinutes = mutableListOf<Int>()
+                val todayEndMinutes = mutableListOf<Int>()
 
                 for (i in 0 until allClassesArray.length()) {
                     val cObj = allClassesArray.getJSONObject(i)
@@ -146,47 +153,107 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             break
                         }
                     }
-                    if (!occursToday && !cObj.has("daysOfWeek")) {
-                        occursToday = true
-                    }
-
                     if (occursToday) {
                         val startMin = parseTimeToMinutes(cObj.optString("startTime", "08:00 AM"))
                         val endMin = parseTimeToMinutes(cObj.optString("endTime", "10:00 AM"))
-                        todayStartTimes.add(startMin)
-                        todayEndTimes.add(endMin)
+                        if (endMin > startMin) {
+                            todayStartMinutes.add(startMin)
+                            todayEndMinutes.add(endMin)
+                        }
                     }
                 }
 
-                if (todayStartTimes.isEmpty()) {
-                    // Free day / No classes today — tick every 15m during day or at midnight
-                    if (nowMinutes in 360..1320) return 15
-                    val minutesToMidnight = (24 * 60 - nowMinutes).coerceAtLeast(1)
-                    return minutesToMidnight.coerceAtMost(60)
+                // Midnight trigger (tomorrow 00:00:00.500)
+                val midnightCal = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 500)
+                }
+                val midnightMillis = midnightCal.timeInMillis
+
+                if (todayStartMinutes.isEmpty()) {
+                    // Free day / No classes today
+                    return if (nowMinutes in 360..1320) {
+                        val next15Min = ((nowMillis / 900000L) + 1L) * 900000L + 250L
+                        minOf(next15Min, midnightMillis)
+                    } else {
+                        midnightMillis
+                    }
                 }
 
-                val earliestStart = todayStartTimes.minOrNull() ?: (8 * 60)
-                val latestEnd = todayEndTimes.maxOrNull() ?: (17 * 60)
+                val earliestStart = todayStartMinutes.min()
+                val latestEnd = todayEndMinutes.max()
 
-                // If anywhere within active school day window (from 60m before first class to end of last class):
-                // Tick every 1 minute for live real-time countdown & status transitions
-                if (nowMinutes in (earliestStart - 60)..latestEnd) {
-                    return 1
+                // Calculate exact epoch boundaries for today's classes
+                val candidateTriggers = mutableListOf<Long>()
+
+                for (startMin in todayStartMinutes) {
+                    val c = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, startMin / 60)
+                        set(Calendar.MINUTE, startMin % 60)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 200)
+                    }
+                    if (c.timeInMillis > nowMillis + 500L) {
+                        candidateTriggers.add(c.timeInMillis)
+                    }
                 }
 
-                // If earlier in the morning before window:
-                if (nowMinutes < earliestStart - 60) {
-                    val minsUntilWindow = (earliestStart - 60) - nowMinutes
-                    return minsUntilWindow.coerceIn(1, 5)
+                for (endMin in todayEndMinutes) {
+                    val c = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, endMin / 60)
+                        set(Calendar.MINUTE, endMin % 60)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 200)
+                    }
+                    if (c.timeInMillis > nowMillis + 500L) {
+                        candidateTriggers.add(c.timeInMillis)
+                    }
                 }
 
-                // If after all classes are done for today:
-                if (nowMinutes in 360..1320) return 15
-                val minutesToMidnight = (24 * 60 - nowMinutes).coerceAtLeast(1)
-                return minutesToMidnight.coerceAtMost(60)
+                val windowStartCal = Calendar.getInstance().apply {
+                    val winStartMin = (earliestStart - 60).coerceAtLeast(0)
+                    set(Calendar.HOUR_OF_DAY, winStartMin / 60)
+                    set(Calendar.MINUTE, winStartMin % 60)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 250)
+                }
+                val windowStartMillis = windowStartCal.timeInMillis
+
+                val windowEndCal = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, latestEnd / 60)
+                    set(Calendar.MINUTE, latestEnd % 60)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 500)
+                }
+                val windowEndMillis = windowEndCal.timeInMillis
+
+                // Check where we are relative to the active window
+                if (nowMillis in windowStartMillis..windowEndMillis) {
+                    // Active window: tick every minute on the minute
+                    val nextMinuteMillis = ((nowMillis / 60000L) + 1L) * 60000L + 250L
+                    candidateTriggers.add(nextMinuteMillis)
+                    return candidateTriggers.min()
+                }
+
+                if (nowMillis < windowStartMillis) {
+                    // Before active window: next tick at window start or 15m tick
+                    val next15Min = ((nowMillis / 900000L) + 1L) * 900000L + 250L
+                    return minOf(windowStartMillis, next15Min)
+                }
+
+                // After active window (all classes done today):
+                return if (nowMinutes in 360..1320) {
+                    val next15Min = ((nowMillis / 900000L) + 1L) * 900000L + 250L
+                    minOf(next15Min, midnightMillis)
+                } else {
+                    midnightMillis
+                }
             } catch (e: Exception) {
-                Log.w(TAG, "computeNextTickMinutes error: $e")
-                return 5
+                Log.w(TAG, "computeNextTriggerMillis error: $e")
+                return fallbackMillis
             }
         }
 
@@ -198,10 +265,12 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
         ) {
             val views = RemoteViews(context.packageName, R.layout.school_schedule_widget)
 
-            // Current Device Date & Time — always fresh
+            // Current Device Date & Time — always fresh (second-level precision)
             val cal = Calendar.getInstance()
             val todayWeekday = getReminderHubWeekday(cal)
             val nowMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            val nowSeconds = cal.get(Calendar.SECOND)
+            val nowTotalSeconds = nowMinutes * 60 + nowSeconds
             val dayName = getDayName(todayWeekday)
             val formattedDate = "$dayName, ${getMonthShortName(cal.get(Calendar.MONTH))} ${cal.get(Calendar.DAY_OF_MONTH)}"
 
@@ -297,10 +366,14 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                         val startMin = parseTimeToMinutes(startTime)
                         val endMin = parseTimeToMinutes(endTime)
 
-                        // Fresh time-based status calculation using CURRENT time
+                        if (endMin <= startMin) continue
+
+                        // Fresh time-based status calculation using CURRENT time with second precision
+                        val startTotalSec = startMin * 60
+                        val endTotalSec = endMin * 60
                         val status = when {
-                            nowMinutes >= endMin -> ClassState.COMPLETED
-                            nowMinutes >= startMin -> ClassState.CURRENT
+                            nowTotalSeconds >= endTotalSec -> ClassState.COMPLETED
+                            nowTotalSeconds >= startTotalSec -> ClassState.CURRENT
                             else -> ClassState.UPCOMING
                         }
 
@@ -316,12 +389,13 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             endMinutes = endMin,
                             status = status,
                             learningMode = dayMode,
-                            colorValue = colorValue
+                            colorValue = colorValue,
+                            daysOfWeek = daysList
                         )
 
                         allParsedClasses.add(model)
 
-                        if (daysList.contains(todayWeekday) || (!cObj.has("daysOfWeek") && daysList.isEmpty())) {
+                        if (daysList.contains(todayWeekday)) {
                             todayClasses.add(model)
                         }
                     }
@@ -343,7 +417,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                     val completedClasses = todayClasses.filter { it.status == ClassState.COMPLETED }
                     val hasNoMoreClasses = currentClass == null && nextClass == null && todayClasses.isNotEmpty()
 
-                    // Section Title (e.g. Other classes Monday (5):)
+                    // Section Title
                     val otherClassesCount = todayClasses.size - (if (currentClass != null) 1 else 0)
                     views.setTextViewText(
                         R.id.widget_section_title,
@@ -355,19 +429,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                     var nextDayName = ""
                     for (offset in 1..7) {
                         val checkWeekday = ((todayWeekday + offset - 1) % 7) + 1
-                        val nextDayList = allParsedClasses.filter {
-                            // Find matching day of week
-                            for (i in 0 until allClassesArray.length()) {
-                                val cObj = allClassesArray.getJSONObject(i)
-                                if (cObj.optString("id") == it.id) {
-                                    val daysArr = cObj.optJSONArray("daysOfWeek") ?: JSONArray()
-                                    for (d in 0 until daysArr.length()) {
-                                        if (daysArr.getInt(d) == checkWeekday) return@filter true
-                                    }
-                                }
-                            }
-                            false
-                        }
+                        val nextDayList = allParsedClasses.filter { it.daysOfWeek.contains(checkWeekday) }
                         if (nextDayList.isNotEmpty()) {
                             nextDayFirstClass = nextDayList.minByOrNull { it.startMinutes }
                             nextDayName = getDayName(checkWeekday)
@@ -388,7 +450,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             views.setTextViewText(R.id.widget_class_time, "${currentClass.startTime} – ${currentClass.endTime}")
 
                             // Countdown: "Ends in Xm"
-                            setCountdown(views, currentClass.endMinutes, "Ends in")
+                            setCountdown(views, currentClass.endMinutes, nowTotalSeconds, "Ends in")
                             views.setTextColor(R.id.widget_countdown, Color.parseColor("#22C55E"))
                             views.setViewVisibility(R.id.widget_countdown_container, View.VISIBLE)
 
@@ -409,7 +471,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             views.setTextViewText(R.id.widget_class_time, "${nextClass.startTime} – ${nextClass.endTime}")
 
                             // Countdown: "Starts in Xm"
-                            setCountdown(views, nextClass.startMinutes, "Starts in")
+                            setCountdown(views, nextClass.startMinutes, nowTotalSeconds, "Starts in")
                             views.setTextColor(R.id.widget_countdown, Color.parseColor("#A78BFA"))
                             views.setViewVisibility(R.id.widget_countdown_container, View.VISIBLE)
 
@@ -427,9 +489,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             views.setTextColor(R.id.widget_status_badge, Color.parseColor("#94A3B8"))
 
                             views.setTextViewText(R.id.widget_class_time, "All done for $dayName")
-                            // A completed day has no countdown target. Hiding the
-                            // chronometer also clears any prior class target held
-                            // by RemoteViews when the widget transitions state.
+                            views.setTextViewText(R.id.widget_countdown, "")
                             views.setViewVisibility(R.id.widget_countdown_container, View.GONE)
 
                             views.setTextViewText(R.id.widget_class_subject, "You\'re done for today 🎉")
@@ -453,6 +513,7 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                             views.setTextColor(R.id.widget_status_badge, Color.parseColor("#94A3B8"))
 
                             views.setTextViewText(R.id.widget_class_time, "No classes scheduled")
+                            views.setTextViewText(R.id.widget_countdown, "")
                             views.setViewVisibility(R.id.widget_countdown_container, View.GONE)
 
                             views.setTextViewText(R.id.widget_class_subject, "No classes for $dayName")
@@ -558,27 +619,42 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        private fun setCountdown(views: RemoteViews, targetMinute: Int, prefix: String) {
-            val now = Calendar.getInstance()
-            val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-            val diffMinutes = targetMinute - nowMinutes
+        /**
+         * Sets the countdown text on the widget, computing the remaining
+         * time from the given current wall clock seconds. Never renders negative values.
+         *
+         * Uses second-level precision so the displayed countdown is accurate.
+         */
+        private fun setCountdown(
+            views: RemoteViews,
+            targetMinute: Int,
+            nowTotalSeconds: Int,
+            prefix: String
+        ) {
+            val targetTotalSeconds = targetMinute * 60
+            val diffSeconds = targetTotalSeconds - nowTotalSeconds
 
             // Stop any running Chronometer on API 24+ so it does not count into negative numbers
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 try {
-                    views.setChronometer(R.id.widget_countdown, SystemClock.elapsedRealtime(), null, false)
+                    views.setChronometer(R.id.widget_countdown, 0L, null, false)
                 } catch (_: Exception) {}
             }
 
             val isStart = prefix.contains("Start", ignoreCase = true)
             val countdownText = when {
-                diffMinutes <= 0 -> if (isStart) "Starting now" else "Ending now"
-                diffMinutes == 1 -> "$prefix < 1m"
-                diffMinutes < 60 -> "$prefix ${diffMinutes}m"
+                // Never show negative — treat zero-or-below as transition
+                diffSeconds <= 0 -> if (isStart) "Starting now" else "Ending now"
+                diffSeconds < 60 -> "$prefix < 1m"
                 else -> {
-                    val h = diffMinutes / 60
-                    val m = diffMinutes % 60
-                    if (m == 0) "$prefix ${h}h" else "$prefix ${h}h ${m}m"
+                    val totalMinutes = (diffSeconds + 59) / 60  // ceil to avoid showing 0m
+                    val h = totalMinutes / 60
+                    val m = totalMinutes % 60
+                    when {
+                        h > 0 && m > 0 -> "$prefix ${h}h ${m}m"
+                        h > 0 -> "$prefix ${h}h"
+                        else -> "$prefix ${m}m"
+                    }
                 }
             }
 
@@ -617,14 +693,13 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
         }
 
         /**
-         * Schedules the next alarm at an absolute wall-clock time.
+         * Schedules the next alarm at an absolute epoch millisecond.
          *
          * Uses RTC_WAKEUP so the device wakes from Doze to fire the alarm.
          * Uses setExactAndAllowWhileIdle on Android M+ for precise delivery.
          * Falls back to setAndAllowWhileIdle if exact alarm permission is missing (Android 12+).
          */
-        private fun scheduleNextAlarm(context: Context, minutesFromNow: Int) {
-            val safeMinutes = minutesFromNow.coerceAtLeast(1)
+        private fun scheduleAlarmAt(context: Context, triggerAtMillis: Long) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val intent = Intent(context, SchoolScheduleWidgetProvider::class.java).apply {
                 action = ACTION_ALARM_TICK
@@ -635,35 +710,35 @@ class SchoolScheduleWidgetProvider : AppWidgetProvider() {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            val nowMillis = System.currentTimeMillis()
-            val nextMinuteAligned = ((nowMillis / 60000L) + safeMinutes) * 60000L
-            val triggerAtMillis = if (nextMinuteAligned > nowMillis) nextMinuteAligned else nowMillis + (safeMinutes * 60000L)
+
+            val safeTrigger = if (triggerAtMillis > System.currentTimeMillis() + 500L) {
+                triggerAtMillis
+            } else {
+                System.currentTimeMillis() + 60000L
+            }
 
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    // Android 12+ — check exact alarm permission
                     if (alarmManager.canScheduleExactAlarms()) {
-                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTrigger, pendingIntent)
                     } else {
-                        // Permission not granted — use inexact but Doze-aware alarm
-                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTrigger, pendingIntent)
                     }
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTrigger, pendingIntent)
                 } else {
-                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, safeTrigger, pendingIntent)
                 }
             } catch (e: SecurityException) {
-                // Exact alarm not permitted — fallback
                 try {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTrigger, pendingIntent)
                 } catch (_: Exception) {
-                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                    alarmManager.set(AlarmManager.RTC_WAKEUP, safeTrigger, pendingIntent)
                 }
             } catch (_: Exception) {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                alarmManager.set(AlarmManager.RTC_WAKEUP, safeTrigger, pendingIntent)
             }
-            Log.d(TAG, "Scheduled next alarm in ${safeMinutes}m")
+            Log.d(TAG, "Scheduled next alarm at $safeTrigger (in ${(safeTrigger - System.currentTimeMillis()) / 1000}s)")
         }
 
         private fun cancelScheduledAlarm(context: Context) {

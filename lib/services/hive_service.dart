@@ -1,17 +1,21 @@
 import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/security/security_service.dart';
 import '../models/app_models.dart';
 import '../models/diary_models.dart';
 import '../models/study_models.dart';
 import '../models/pet_models.dart';
+import 'encryption_service.dart';
 
 class HiveService {
   static final HiveService instance = HiveService._internal();
   HiveService._internal();
 
   // Data version for migrations
-  static const int currentDataVersion = 9;
+  static const int currentDataVersion = 10;
 
   final ValueNotifier<int> remindersChangedNotifier = ValueNotifier<int>(0);
   void notifyRemindersChanged() {
@@ -38,11 +42,22 @@ class HiveService {
   Box<String>? _studySubjectsBox;
   Box<String>? _petBox;
   bool _initialized = false;
+  String? _credentialEncryptionKey;
+  bool _credentialStorageLocked = false;
+  final List<UserAccount> _userAccountCache = [];
 
-  Future<void> init() async {
+  Future<void> init({
+    @visibleForTesting String? directoryPath,
+    @visibleForTesting String? testCredentialEncryptionKey,
+    @visibleForTesting bool runMigrations = true,
+  }) async {
     if (_initialized) return;
 
-    await Hive.initFlutter();
+    if (directoryPath == null) {
+      await Hive.initFlutter();
+    } else {
+      Hive.init(directoryPath);
+    }
 
     _remindersBox = await Hive.openBox<String>('reminders');
     _reminderHistoryBox = await Hive.openBox<String>('reminder_history');
@@ -65,9 +80,100 @@ class HiveService {
     _petBox = await Hive.openBox<String>('pet');
     _initialized = true;
 
-    // Run migrations after all boxes are opened
-    await _runMigrations();
-    await _initializeDiaryEntryDateIndex();
+    try {
+      await _initializeUserAccountEncryption(testCredentialEncryptionKey);
+      if (runMigrations) {
+        await _runMigrations();
+        await _initializeDiaryEntryDateIndex();
+      }
+    } catch (_) {
+      await Hive.close();
+      _resetBoxReferences();
+      _initialized = false;
+      rethrow;
+    }
+  }
+
+  Future<void> _initializeUserAccountEncryption(String? testKey) async {
+    final box = _userAccountsBox!;
+    if (box.isEmpty) {
+      _credentialEncryptionKey = testKey;
+      _credentialStorageLocked = false;
+      return;
+    }
+
+    final records = <MapEntry<dynamic, String>>[];
+    var hasEncryptedRecord = false;
+    for (final entry in box.toMap().entries) {
+      final raw = entry.value;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        throw const FormatException('Invalid saved account record.');
+      }
+      final record = Map<String, dynamic>.from(decoded);
+      hasEncryptedRecord |= EncryptionService.instance.isEncryptedAccountRecord(
+        record,
+      );
+      records.add(MapEntry(entry.key, raw));
+    }
+
+    String? key;
+    try {
+      key = testKey ?? await SecurityService.instance.getAccountEncryptionKey();
+    } catch (_) {
+      _credentialStorageLocked = true;
+      return;
+    }
+    if (key == null) {
+      if (hasEncryptedRecord) {
+        _credentialStorageLocked = true;
+        return;
+      }
+      try {
+        key = _generateCredentialKey();
+        await SecurityService.instance.setAccountEncryptionKey(key);
+      } catch (_) {
+        _credentialStorageLocked = true;
+        return;
+      }
+    }
+    _credentialEncryptionKey = key;
+    _credentialStorageLocked = false;
+
+    _userAccountCache.clear();
+    for (final entry in records) {
+      final decoded = jsonDecode(entry.value) as Map;
+      final record = Map<String, dynamic>.from(decoded);
+      final isEncrypted = EncryptionService.instance.isEncryptedAccountRecord(
+        record,
+      );
+      final json = isEncrypted
+          ? await EncryptionService.instance.decryptAccountJson(
+              entry.value,
+              key,
+            )
+          : entry.value;
+      final account = UserAccount.fromJson(
+        jsonDecode(json) as Map<String, dynamic>,
+      );
+      if (account.id != entry.key) {
+        throw const FormatException('Saved account identifier mismatch.');
+      }
+      _userAccountCache.add(account);
+      if (!isEncrypted) {
+        final encrypted = await EncryptionService.instance.encryptAccountJson(
+          entry.value,
+          key,
+        );
+        await box.put(entry.key, encrypted);
+        await box.flush();
+      }
+    }
+  }
+
+  String _generateCredentialKey() {
+    final random = Random.secure();
+    return base64Encode(List<int>.generate(32, (_) => random.nextInt(256)));
   }
 
   Future<void> _runMigrations() async {
@@ -137,6 +243,11 @@ class HiveService {
     }
     if (fromVersion < 8) {
       await _migrateDuplicateUserBirthdays();
+    }
+    if (fromVersion < 10) {
+      for (final bill in getBills()) {
+        await saveBill(bill);
+      }
     }
   }
 
@@ -269,19 +380,111 @@ class HiveService {
   // --- User Accounts ---
   List<UserAccount> getUserAccounts() {
     if (_userAccountsBox == null) return [];
-    return _readRecords(_userAccountsBox!, UserAccount.fromJson);
+    if (_credentialStorageLocked ||
+        (_userAccountsBox!.isNotEmpty && _credentialEncryptionKey == null)) {
+      throw StateError(
+        'Saved account credentials are locked because the device secure key is unavailable. '
+        'Your data has not been deleted; restore a passphrase-protected backup from Settings.',
+      );
+    }
+    return List<UserAccount>.unmodifiable(_userAccountCache);
+  }
+
+  Map<String, String> getUserAccountStorageRecords() {
+    if (_userAccountsBox == null) return {};
+    return {
+      for (final entry in _userAccountsBox!.toMap().entries)
+        entry.key: entry.value,
+    };
+  }
+
+  @visibleForTesting
+  Future<void> writeRawUserAccountRecordForTesting(
+    String id,
+    String serializedRecord,
+  ) async {
+    await ensureInitialized();
+    await _userAccountsBox!.put(id, serializedRecord);
+    await _userAccountsBox!.flush();
+  }
+
+  Future<void> restoreUserAccountStorageRecords(
+    Map<String, String> records, {
+    String? encryptionKey,
+  }) async {
+    await ensureInitialized();
+    await _userAccountsBox!.clear();
+    await _userAccountsBox!.putAll(records);
+    await _userAccountsBox!.flush();
+    _userAccountCache.clear();
+    _credentialEncryptionKey = encryptionKey;
+    _credentialStorageLocked = records.isNotEmpty && encryptionKey == null;
+    if (encryptionKey == null) return;
+    for (final entry in records.entries) {
+      final decoded = jsonDecode(entry.value) as Map;
+      final record = Map<String, dynamic>.from(decoded);
+      final isEncrypted = EncryptionService.instance.isEncryptedAccountRecord(
+        record,
+      );
+      final serialized = isEncrypted
+          ? await EncryptionService.instance.decryptAccountJson(
+              entry.value,
+              encryptionKey,
+            )
+          : entry.value;
+      final account = UserAccount.fromJson(
+        jsonDecode(serialized) as Map<String, dynamic>,
+      );
+      if (account.id != entry.key) {
+        throw const FormatException('Saved account identifier mismatch.');
+      }
+      _userAccountCache.add(account);
+      if (!isEncrypted) {
+        await _userAccountsBox!.put(
+          entry.key,
+          await EncryptionService.instance.encryptAccountJson(
+            entry.value,
+            encryptionKey,
+          ),
+        );
+      }
+    }
+    await _userAccountsBox!.flush();
   }
 
   Future<void> saveUserAccount(UserAccount account) async {
     await ensureInitialized();
-    await _userAccountsBox!.put(account.id, jsonEncode(account.toJson()));
+    var key = _credentialEncryptionKey;
+    if (key == null) {
+      key = await SecurityService.instance.getAccountEncryptionKey();
+      if (key == null) {
+        if (_userAccountsBox!.isNotEmpty) {
+          throw StateError(
+            'Cannot replace the secure key while encrypted account records exist.',
+          );
+        }
+        key = _generateCredentialKey();
+        await SecurityService.instance.setAccountEncryptionKey(key);
+      }
+      _credentialEncryptionKey = key;
+    }
+    _credentialStorageLocked = false;
+    final serialized = jsonEncode(account.toJson());
+    final encrypted = await EncryptionService.instance.encryptAccountJson(
+      serialized,
+      key,
+    );
+    await _userAccountsBox!.put(account.id, encrypted);
     await _userAccountsBox!.flush();
+    _userAccountCache.removeWhere((stored) => stored.id == account.id);
+    _userAccountCache.add(account);
   }
 
   Future<void> deleteUserAccount(String id) async {
     await ensureInitialized();
     await _userAccountsBox!.delete(id);
     await _userAccountsBox!.flush();
+    _userAccountCache.removeWhere((account) => account.id == id);
   }
 
   // --- Bills ---
@@ -291,6 +494,13 @@ class HiveService {
   }
 
   Future<void> saveBill(Bill bill) async {
+    if (!Bill.isValidAmount(bill.amount)) {
+      throw ArgumentError.value(
+        bill.amount,
+        'bill.amount',
+        'Must be a finite amount greater than zero.',
+      );
+    }
     await ensureInitialized();
     await _billsBox!.put(bill.id, jsonEncode(bill.toJson()));
     await _billsBox!.flush();
@@ -811,6 +1021,42 @@ class HiveService {
     await _studySettingsBox?.flush();
     await _studySubjectsBox?.flush();
     await _petBox?.flush();
+    _userAccountCache.clear();
+    if (_userAccountsBox?.isEmpty == true) {
+      _credentialStorageLocked = false;
+    }
+  }
+
+  @visibleForTesting
+  Future<void> resetForTesting() async {
+    if (_initialized) await Hive.close();
+    _resetBoxReferences();
+    _credentialEncryptionKey = null;
+    _credentialStorageLocked = false;
+    _userAccountCache.clear();
+    _initialized = false;
+  }
+
+  void _resetBoxReferences() {
+    _remindersBox = null;
+    _reminderHistoryBox = null;
+    _schoolClassesBox = null;
+    _aiAccountsBox = null;
+    _userAccountsBox = null;
+    _billsBox = null;
+    _gasPurchasesBox = null;
+    _suppliersBox = null;
+    _settingsBox = null;
+    _birthdaysBox = null;
+    _diaryEntriesBox = null;
+    _diaryEntryDatesBox = null;
+    _notesBox = null;
+    _studyMethodsBox = null;
+    _studyHistoryBox = null;
+    _studyTimerBox = null;
+    _studySettingsBox = null;
+    _studySubjectsBox = null;
+    _petBox = null;
   }
 
   // --- Pet Companion Preferences ---

@@ -1,0 +1,6 @@
+# Copy to android/key.properties and replace with your protected local values.
+# Never commit android/key.properties or a private keystore.
+storeFile=/absolute/path/to/release-upload-key.jks
+storePassword=REPLACE_WITH_STORE_PASSWORD
+keyAlias=REPLACE_WITH_KEY_ALIAS
+keyPassword=REPLACE_WITH_KEY_PASSWORD

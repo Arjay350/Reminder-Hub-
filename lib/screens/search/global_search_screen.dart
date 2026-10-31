@@ -25,6 +25,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   List<Birthday> _birthdays = [];
   List<DiaryEntry> _diaryEntries = [];
   List<NotebookNote> _notes = [];
+  String? _accountStorageError;
 
   String _query = '';
 
@@ -37,16 +38,34 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   Future<void> _loadAll() async {
     await _hive.ensureInitialized();
     if (!mounted) return;
+    List<UserAccount> accounts;
+    try {
+      accounts = _hive.getUserAccounts();
+      _accountStorageError = null;
+    } on StateError catch (error) {
+      accounts = [];
+      _accountStorageError = error.message.toString();
+    }
     setState(() {
       _reminders = _hive.getReminders();
       _bills = _hive.getBills();
       _aiAccounts = _hive.getAIAccounts();
-      _userAccounts = _hive.getUserAccounts();
+      _userAccounts = accounts;
       _gasPurchases = _hive.getGasPurchases();
       _birthdays = _hive.getBirthdays();
       _diaryEntries = NotebookService.instance.getDiaryEntries();
       _notes = NotebookService.instance.getNotes();
     });
+    final error = _accountStorageError;
+    if (error != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error)));
+        }
+      });
+    }
   }
 
   @override

@@ -21,6 +21,7 @@ class _AccountManagerScreenState extends State<AccountManagerScreen> {
   final HiveService _hive = HiveService.instance;
 
   List<UserAccount> _accounts = [];
+  String? _accountStorageError;
   String _selectedCategory = 'All';
   String _searchQuery = '';
 
@@ -44,17 +45,46 @@ class _AccountManagerScreenState extends State<AccountManagerScreen> {
   }
 
   Future<void> _loadAccounts() async {
-    await _hive.ensureInitialized();
-    if (!mounted) return;
-    setState(() {
-      _accounts = _hive.getUserAccounts();
-    });
+    try {
+      await _hive.ensureInitialized();
+      final accounts = _hive.getUserAccounts();
+      if (!mounted) return;
+      setState(() {
+        _accounts = accounts;
+        _accountStorageError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _accountStorageError = error.toString());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    if (_accountStorageError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Account Manager')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 40),
+                const SizedBox(height: 12),
+                const Text(
+                  'Saved credentials are locked. Your account data has not been deleted. '
+                  'Restore a passphrase-protected backup from Settings or make sure device secure storage is available.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     final filtered = _accounts.where((a) {
       if (_selectedCategory != 'All' && a.category != _selectedCategory) {

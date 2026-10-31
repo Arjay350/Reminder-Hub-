@@ -166,7 +166,7 @@ class WidgetService {
         final next = dayStatus.nextClass!;
         nextClassText =
             'Next: ${next.schoolClass.subject} at ${next.schoolClass.startTime}';
-        if (next.timeUntilStart != null) {
+        if (next.timeUntilStart != null && next.timeUntilStartFormatted.isNotEmpty) {
           nextClassText += ' (${next.timeUntilStartFormatted})';
         }
       } else if (dayStatus.hasNoMoreClasses) {
@@ -218,6 +218,7 @@ class WidgetService {
           'status': cs.status.name, // current, next, upcoming, completed
           'timeRemaining': cs.timeRemainingFormatted,
           'timeUntilStart': cs.timeUntilStartFormatted,
+          'targetTimeMillis': cs.targetTime?.millisecondsSinceEpoch,
         };
       }).toList();
 

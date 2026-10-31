@@ -21,6 +21,7 @@ class _BillDialogState extends State<BillDialog> {
   late String _name;
   late double _amount;
   late DateTime _dueDate;
+  late int _targetDayOfMonth;
   late String _repeat;
   late String _category;
   late bool _paid;
@@ -55,6 +56,7 @@ class _BillDialogState extends State<BillDialog> {
     _name = b?.name ?? '';
     _amount = b?.amount ?? 0.0;
     _dueDate = b?.dueDate ?? DateTime.now().add(const Duration(days: 7));
+    _targetDayOfMonth = b?.targetDayOfMonth ?? _dueDate.day;
     _repeat = b?.repeat ?? 'Monthly';
     _category = b?.category ?? 'Utilities';
     _paid = b?.paid ?? false;
@@ -67,7 +69,7 @@ class _BillDialogState extends State<BillDialog> {
     final dueStr = DateFormat('MMM dd, yyyy').format(_dueDate);
     switch (_repeat) {
       case 'Monthly':
-        return '🔔 Repeats every month on day ${_dueDate.day} ($_reminderSchedule)';
+        return 'Repeats every month on day $_targetDayOfMonth ($_reminderSchedule)';
       case 'Yearly':
         return '🔔 Repeats every year on ${DateFormat('MMMM d').format(_dueDate)} ($_reminderSchedule)';
       default:
@@ -101,10 +103,14 @@ class _BillDialogState extends State<BillDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isEditing ? 'Edit Bill' : 'New Bill',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      isEditing ? 'Edit Bill' : 'New Bill',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -116,6 +122,8 @@ class _BillDialogState extends State<BillDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 initialValue: _name,
+                minLines: 1,
+                maxLines: 3,
                 decoration: InputDecoration(
                   labelText: 'Bill Name',
                   border: OutlineInputBorder(
@@ -141,10 +149,13 @@ class _BillDialogState extends State<BillDialog> {
                   ),
                   prefixIcon: const Icon(Icons.payments_outlined),
                 ),
-                validator: (val) => val == null || double.tryParse(val) == null
-                    ? 'Please enter valid amount'
-                    : null,
-                onSaved: (val) => _amount = double.parse(val!),
+                validator: (val) {
+                  final amount = double.tryParse(val?.trim() ?? '');
+                  return amount == null || !Bill.isValidAmount(amount)
+                      ? 'Enter a finite amount greater than zero'
+                      : null;
+                },
+                onSaved: (val) => _amount = double.parse(val!.trim()),
               ),
               const SizedBox(height: 12),
               Row(
@@ -162,7 +173,12 @@ class _BillDialogState extends State<BillDialog> {
                             const Duration(days: 1825),
                           ),
                         );
-                        if (picked != null) setState(() => _dueDate = picked);
+                        if (picked != null) {
+                          setState(() {
+                            _dueDate = picked;
+                            _targetDayOfMonth = picked.day;
+                          });
+                        }
                       },
                       child: InputDecorator(
                         decoration: InputDecoration(
@@ -181,6 +197,7 @@ class _BillDialogState extends State<BillDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _category,
                       decoration: InputDecoration(
                         labelText: 'Category',
@@ -203,6 +220,7 @@ class _BillDialogState extends State<BillDialog> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _repeat,
                       decoration: InputDecoration(
                         labelText: 'Repeat',
@@ -221,6 +239,7 @@ class _BillDialogState extends State<BillDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _reminderSchedule,
                       decoration: InputDecoration(
                         labelText: 'Remind Before',
@@ -241,6 +260,7 @@ class _BillDialogState extends State<BillDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _resetSchedule,
                 decoration: InputDecoration(
                   labelText: 'Reset to Unpaid',
@@ -286,6 +306,8 @@ class _BillDialogState extends State<BillDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 initialValue: _notes,
+                minLines: 1,
+                maxLines: 4,
                 decoration: InputDecoration(
                   labelText: 'Notes (optional)',
                   border: OutlineInputBorder(
@@ -364,11 +386,14 @@ class _BillDialogState extends State<BillDialog> {
 
               // ─────────────────────────────────────────────────────────────
               const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Mark as Paid'),
-                value: _paid,
-                onChanged: (val) => setState(() => _paid = val),
+              Material(
+                color: Colors.transparent,
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Mark as Paid'),
+                  value: _paid,
+                  onChanged: (val) => setState(() => _paid = val),
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -444,12 +469,14 @@ class _BillDialogState extends State<BillDialog> {
             children: [
               Icon(statusIcon, size: 16, color: statusColor),
               const SizedBox(width: 8),
-              Text(
-                'Current Status: $statusLabel',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
+              Expanded(
+                child: Text(
+                  'Current Status: $statusLabel',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
                 ),
               ),
             ],
@@ -504,6 +531,7 @@ class _BillDialogState extends State<BillDialog> {
       notes: _notes,
       // Preserve existing payment history — never clear it on edit
       paymentHistory: widget.bill?.paymentHistory,
+      targetDayOfMonth: _targetDayOfMonth,
     );
 
     await HiveService.instance.saveBill(bill);

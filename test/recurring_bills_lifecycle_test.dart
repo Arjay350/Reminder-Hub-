@@ -163,7 +163,7 @@ void main() {
 
   group('Test 5 & 6 — Month-end & Leap Year Boundary Calculations', () {
     test(
-      'advanceMonthly safely clamps Jan 31 -> Feb 28 in non-leap year (2025)',
+      'advanceMonthly preserves the original 31-day anchor after February',
       () {
         final bill = Bill(
           id: 'b-1',
@@ -181,7 +181,7 @@ void main() {
         expect(febDate, DateTime(2025, 2, 28));
 
         final marDate = bill.advanceMonthly(febDate);
-        expect(marDate, DateTime(2025, 3, 28));
+        expect(marDate, DateTime(2025, 3, 31));
       },
     );
 
@@ -202,6 +202,7 @@ void main() {
 
         final febLeapDate = bill.advanceMonthly(bill.dueDate);
         expect(febLeapDate, DateTime(2028, 2, 29));
+        expect(bill.advanceMonthly(febLeapDate), DateTime(2028, 3, 31));
       },
     );
 
@@ -364,6 +365,7 @@ void main() {
       expect(bill.amount, 3200.50);
       expect(bill.paymentHistory, isNotNull);
       expect(bill.paymentHistory, isEmpty);
+      expect(bill.targetDayOfMonth, 15);
     });
 
     test('Full JSON serialization round-trip retains paymentHistory', () {
@@ -400,6 +402,58 @@ void main() {
       );
       expect(restored.paymentHistory.first.paidDate, DateTime(2026, 8, 9));
       expect(restored.paymentHistory.first.amount, 149.0);
+      expect(restored.targetDayOfMonth, original.targetDayOfMonth);
+    });
+
+    test('monthly anchor survives clamping and serialization', () {
+      final january = Bill(
+        id: 'anchor-31',
+        name: 'Rent',
+        amount: 100,
+        dueDate: DateTime(2025, 1, 31),
+        repeat: 'Monthly',
+        category: 'Rent / Mortgage',
+        paid: false,
+        reminderSchedule: 'Same day',
+        notes: '',
+      );
+      final february = Bill.fromJson({
+        ...january.copyWith(dueDate: january.advanceMonthly(january.dueDate))
+            .toJson(),
+      });
+
+      expect(february.dueDate, DateTime(2025, 2, 28));
+      expect(february.targetDayOfMonth, 31);
+      expect(
+        february.getNextOccurrence(february.dueDate),
+        DateTime(2025, 3, 31),
+      );
+    });
+
+    test('legacy record derives its only recoverable day anchor from due date', () {
+      final legacy = Bill.fromJson({
+        'id': 'legacy-anchor',
+        'name': 'Legacy bill',
+        'amount': 10,
+        'dueDate': '2025-02-28T00:00:00.000',
+        'repeat': 'Monthly',
+        'category': 'Utilities',
+        'paid': false,
+        'reminderSchedule': 'Same day',
+        'notes': '',
+      });
+
+      expect(legacy.targetDayOfMonth, 28);
+      expect(legacy.getNextOccurrence(legacy.dueDate), DateTime(2025, 3, 28));
+    });
+
+    test('bill amount policy accepts finite positive values only', () {
+      expect(Bill.isValidAmount(0), isFalse);
+      expect(Bill.isValidAmount(-1), isFalse);
+      expect(Bill.isValidAmount(double.nan), isFalse);
+      expect(Bill.isValidAmount(double.infinity), isFalse);
+      expect(Bill.isValidAmount(1.25), isTrue);
+      expect(Bill.isValidAmount(1e300), isTrue);
     });
   });
 

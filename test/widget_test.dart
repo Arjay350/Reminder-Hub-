@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,7 @@ import 'package:reminder_hub/models/app_models.dart';
 import 'package:reminder_hub/services/gas_calculation_service.dart';
 import 'package:reminder_hub/services/timetable_calculation_service.dart';
 import 'package:reminder_hub/services/widget_service.dart';
+import 'package:reminder_hub/services/hive_service.dart';
 import 'package:reminder_hub/widgets/weekly_timetable_widget.dart';
 import 'package:reminder_hub/widgets/password_text_field.dart';
 import 'package:reminder_hub/widgets/ai_account_dialog.dart';
@@ -230,14 +233,40 @@ void main() {
   });
 
   group('Android Home-Screen Widget Service Tests', () {
-    test('WidgetService can be instantiated and executed cleanly', () async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-      // Should not throw even in test environment
-      expect(
-        () async => await WidgetService.instance.updateSchoolWidget(),
-        returnsNormally,
-      );
-    });
+    test(
+      'WidgetService updates widgets with mocked platform dependencies',
+      () async {
+        final binding = TestWidgetsFlutterBinding.ensureInitialized();
+        final tempDir = await Directory.systemTemp.createTemp(
+          'widget_service_test_',
+        );
+        await HiveService.instance.resetForTesting();
+        await HiveService.instance.init(directoryPath: tempDir.path);
+        addTearDown(() async {
+          await HiveService.instance.resetForTesting();
+          await tempDir.delete(recursive: true);
+        });
+
+        const channel = MethodChannel(
+          'com.reminderhub.reminder_hub/school_widget',
+        );
+        binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          channel,
+          (call) async => null,
+        );
+        addTearDown(
+          () => binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            channel,
+            null,
+          ),
+        );
+
+        await expectLater(
+          WidgetService.instance.updateSchoolWidget(),
+          completes,
+        );
+      },
+    );
   });
 
   group('TimetableCalculationService Tests', () {

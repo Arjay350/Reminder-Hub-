@@ -235,7 +235,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.sm),
           side: const BorderSide(color: AppColors.lightBorder),
         ),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(
+          color: Color(0xFF172033),
+          fontWeight: FontWeight.w500,
+        ),
         side: const BorderSide(color: AppColors.lightBorder),
       ),
       dialogTheme: DialogThemeData(
@@ -442,7 +445,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.sm),
           side: const BorderSide(color: AppColors.darkBorder),
         ),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(
+          color: Color(0xFFE6EAF2),
+          fontWeight: FontWeight.w500,
+        ),
         side: const BorderSide(color: AppColors.darkBorder),
       ),
       dialogTheme: DialogThemeData(

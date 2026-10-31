@@ -135,7 +135,9 @@ class SchoolScheduleRemoteViewsFactory(
             val json = JSONObject(rawJson)
             val cal = Calendar.getInstance()
             todayWeekday = SchoolScheduleWidgetProvider.getReminderHubWeekday(cal)
-            val nowMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            val nowTotalSeconds = cal.get(Calendar.HOUR_OF_DAY) * 3600 +
+                    cal.get(Calendar.MINUTE) * 60 +
+                    cal.get(Calendar.SECOND)
 
             // Read Day Class Modes
             val dayModesObj = json.optJSONObject("dayModes")
@@ -150,17 +152,14 @@ class SchoolScheduleRemoteViewsFactory(
             for (i in 0 until classesArray.length()) {
                 val cObj = classesArray.getJSONObject(i)
                 val daysArr = cObj.optJSONArray("daysOfWeek") ?: JSONArray()
+                val daysList = mutableListOf<Int>()
                 var occursToday = false
                 for (d in 0 until daysArr.length()) {
-                    if (daysArr.getInt(d) == todayWeekday) {
+                    val dayNum = daysArr.getInt(d)
+                    daysList.add(dayNum)
+                    if (dayNum == todayWeekday) {
                         occursToday = true
-                        break
                     }
-                }
-
-                // If daysOfWeek wasn't present or empty, check if this object is directly in today's classes
-                if (!occursToday && !cObj.has("daysOfWeek")) {
-                    occursToday = true
                 }
 
                 if (occursToday) {
@@ -176,9 +175,14 @@ class SchoolScheduleRemoteViewsFactory(
                     val startMin = SchoolScheduleWidgetProvider.parseTimeToMinutes(startTime)
                     val endMin = SchoolScheduleWidgetProvider.parseTimeToMinutes(endTime)
 
+                    if (endMin <= startMin) continue
+
+                    // Use second-level precision to evaluate status at exact class boundaries
+                    val startTotalSec = startMin * 60
+                    val endTotalSec = endMin * 60
                     val status = when {
-                        nowMinutes >= endMin -> ClassState.COMPLETED
-                        nowMinutes >= startMin -> ClassState.CURRENT
+                        nowTotalSeconds >= endTotalSec -> ClassState.COMPLETED
+                        nowTotalSeconds >= startTotalSec -> ClassState.CURRENT
                         else -> ClassState.UPCOMING
                     }
 
@@ -195,7 +199,8 @@ class SchoolScheduleRemoteViewsFactory(
                             endMinutes = endMin,
                             status = status,
                             learningMode = dayMode,
-                            colorValue = colorValue
+                            colorValue = colorValue,
+                            daysOfWeek = daysList
                         )
                     )
                 }
@@ -228,5 +233,6 @@ data class WidgetClassModel(
     val endMinutes: Int,
     val status: ClassState,
     val learningMode: String,
-    val colorValue: Long
+    val colorValue: Long,
+    val daysOfWeek: List<Int> = emptyList()
 )

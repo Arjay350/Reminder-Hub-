@@ -33,6 +33,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
     text: '45',
   );
   bool _canExactAlarm = true;
+  bool _invalidLegacyTime = false;
 
   final List<String> _categories = [
     'Subscriptions',
@@ -77,12 +78,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
     _category = r?.category ?? 'Personal';
     _description = r?.description ?? '';
     _date = r?.date ?? DateTime.now().add(const Duration(days: 1));
-    _time = r != null
-        ? TimeOfDay(
-            hour: int.tryParse(r.time.split(':')[0]) ?? 9,
-            minute: int.tryParse(r.time.split(':')[1].split(' ')[0]) ?? 0,
-          )
-        : const TimeOfDay(hour: 9, minute: 0);
+    final parsedTime = r == null ? null : Reminder.parseTime(r.time);
+    _invalidLegacyTime = r != null && parsedTime == null;
+    _time = parsedTime ?? const TimeOfDay(hour: 9, minute: 0);
     _repeat = r?.repeat ?? 'None';
     _priority = r?.priority ?? 'Medium';
     _notes = r?.notes ?? '';
@@ -174,10 +172,14 @@ class _ReminderDialogState extends State<ReminderDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isEditing ? 'Edit Reminder' : 'New Reminder',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      isEditing ? 'Edit Reminder' : 'New Reminder',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -191,6 +193,8 @@ class _ReminderDialogState extends State<ReminderDialog> {
               // Title
               TextFormField(
                 initialValue: _title,
+                minLines: 1,
+                maxLines: 3,
                 decoration: InputDecoration(
                   labelText: 'Reminder Title *',
                   border: OutlineInputBorder(
@@ -207,6 +211,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
 
               // Category
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _category,
                 decoration: InputDecoration(
                   labelText: 'Category',
@@ -263,7 +268,12 @@ class _ReminderDialogState extends State<ReminderDialog> {
                           context: context,
                           initialTime: _time,
                         );
-                        if (picked != null) setState(() => _time = picked);
+                        if (picked != null) {
+                          setState(() {
+                            _time = picked;
+                            _invalidLegacyTime = false;
+                          });
+                        }
                       },
                       child: InputDecorator(
                         decoration: InputDecoration(
@@ -279,6 +289,13 @@ class _ReminderDialogState extends State<ReminderDialog> {
                   ),
                 ],
               ),
+              if (_invalidLegacyTime) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'The saved time is invalid. Choose a valid time before saving.',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ],
               const SizedBox(height: 12),
 
               // Repeat & Priority
@@ -286,6 +303,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _repeat,
                       decoration: InputDecoration(
                         labelText: 'Repeat (Offline)',
@@ -305,6 +323,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _priority,
                       decoration: InputDecoration(
                         labelText: 'Priority',
@@ -352,6 +371,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
 
               // Reminder Before
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _reminderBefore,
                 decoration: InputDecoration(
                   labelText: 'Notification Offset',
@@ -397,6 +417,8 @@ class _ReminderDialogState extends State<ReminderDialog> {
               // Description
               TextFormField(
                 initialValue: _description,
+                minLines: 1,
+                maxLines: 4,
                 decoration: InputDecoration(
                   labelText: 'Description (optional)',
                   border: OutlineInputBorder(
@@ -464,7 +486,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: _save,
+                  onPressed: _invalidLegacyTime ? null : _save,
                   child: Text(
                     isEditing ? 'Update Reminder' : 'Save Reminder',
                     style: const TextStyle(
@@ -482,6 +504,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
   }
 
   Future<void> _save() async {
+    if (_invalidLegacyTime) return;
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
@@ -510,6 +533,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
       priority: _priority,
       notes: _notes,
       completed: widget.reminder?.completed ?? false,
+      targetDayOfMonth:
+          widget.reminder?.targetDayOfMonth ??
+          (_repeat == 'Monthly' ? _date.day : null),
     );
 
     await HiveService.instance.saveReminder(reminder);
