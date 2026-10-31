@@ -10,6 +10,7 @@
         "audioplayers",
         "collection",
         "crypto",
+        "cryptography",
         "cupertino_icons",
         "encrypt",
         "extension_google_sign_in_as_googleapis_auth",
@@ -131,6 +132,17 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "cryptography",
+      "version": "2.9.0",
+      "dependencies": [
+        "collection",
+        "crypto",
+        "ffi",
+        "meta",
+        "typed_data"
       ]
     },
     {
@@ -870,6 +882,18 @@
       ]
     },
     {
+      "name": "typed_data",
+      "version": "1.4.0",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
+      "name": "ffi",
+      "version": "2.2.0",
+      "dependencies": []
+    },
+    {
       "name": "web",
       "version": "1.1.1",
       "dependencies": []
@@ -1062,13 +1086,6 @@
       ]
     },
     {
-      "name": "typed_data",
-      "version": "1.4.0",
-      "dependencies": [
-        "collection"
-      ]
-    },
-    {
       "name": "url_launcher_windows",
       "version": "3.1.5",
       "dependencies": [
@@ -1210,11 +1227,6 @@
         "ffi_leak_tracker",
         "meta"
       ]
-    },
-    {
-      "name": "ffi",
-      "version": "2.2.0",
-      "dependencies": []
     },
     {
       "name": "share_plus_platform_interface",

@@ -343,19 +343,36 @@ class Reminder {
   bool get isRecurring =>
       repeat.trim().isNotEmpty && repeat.trim().toLowerCase() != 'none';
 
+  static TimeOfDay? parseTime(String value) {
+    final normalized = value.trim().toUpperCase();
+    final twelveHour = RegExp(
+      r'^(0?[1-9]|1[0-2]):([0-5][0-9])\s*(AM|PM)$',
+    ).firstMatch(normalized);
+    if (twelveHour != null) {
+      var hour = int.parse(twelveHour.group(1)!);
+      final minute = int.parse(twelveHour.group(2)!);
+      final period = twelveHour.group(3);
+      if (period == 'PM' && hour < 12) hour += 12;
+      if (period == 'AM' && hour == 12) hour = 0;
+      return TimeOfDay(hour: hour, minute: minute);
+    }
+
+    final twentyFourHour = RegExp(
+      r'^([01][0-9]|2[0-3]):([0-5][0-9])$',
+    ).firstMatch(normalized);
+    if (twentyFourHour == null) return null;
+    return TimeOfDay(
+      hour: int.parse(twentyFourHour.group(1)!),
+      minute: int.parse(twentyFourHour.group(2)!),
+    );
+  }
+
   DateTime get dueDateTime {
-    final clean = time.trim().toUpperCase();
-    final isPm = clean.contains('PM');
-    final isAm = clean.contains('AM');
-    final numPart = clean.replaceAll('AM', '').replaceAll('PM', '').trim();
-    final parts = numPart.split(':');
-    int hour = int.tryParse(parts[0]) ?? 9;
-    int minute = parts.length > 1
-        ? (int.tryParse(parts[1].replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
-        : 0;
-    if (isPm && hour < 12) hour += 12;
-    if (isAm && hour == 12) hour = 0;
-    return DateTime(date.year, date.month, date.day, hour, minute);
+    final parsed = parseTime(time);
+    if (parsed == null) {
+      throw FormatException('Invalid reminder time: $time');
+    }
+    return DateTime(date.year, date.month, date.day, parsed.hour, parsed.minute);
   }
 
   DateTime calculateNextOccurrence([DateTime? referenceDate]) {
@@ -1057,8 +1074,10 @@ class Bill {
     required this.notes,
     String? resetSchedule,
     List<BillPayment>? paymentHistory,
+    int? targetDayOfMonth,
   }) : resetSchedule = resetSchedule ?? reminderSchedule,
-       paymentHistory = paymentHistory ?? [];
+       paymentHistory = paymentHistory ?? [],
+       targetDayOfMonth = targetDayOfMonth ?? dueDate.day;
 
   final String id;
   final String name;
@@ -1070,6 +1089,7 @@ class Bill {
   final String reminderSchedule; // 1 day before, 3 days before, 1 week before
   final String resetSchedule; // when a paid recurring bill becomes unpaid
   final String notes;
+  final int targetDayOfMonth;
 
   /// Payment history for recurring bills. Each entry represents one completed
   /// billing cycle. Non-recurring bills will always have an empty list.
@@ -1087,6 +1107,7 @@ class Bill {
     String? resetSchedule,
     String? notes,
     List<BillPayment>? paymentHistory,
+    int? targetDayOfMonth,
   }) {
     return Bill(
       id: id ?? this.id,
@@ -1100,6 +1121,7 @@ class Bill {
       resetSchedule: resetSchedule ?? this.resetSchedule,
       notes: notes ?? this.notes,
       paymentHistory: paymentHistory ?? this.paymentHistory,
+      targetDayOfMonth: targetDayOfMonth ?? this.targetDayOfMonth,
     );
   }
 
@@ -1115,6 +1137,7 @@ class Bill {
     'resetSchedule': resetSchedule,
     'notes': notes,
     'paymentHistory': paymentHistory.map((p) => p.toJson()).toList(),
+    'targetDayOfMonth': targetDayOfMonth,
   };
 
   factory Bill.fromJson(Map<String, dynamic> json) => Bill(
@@ -1136,6 +1159,7 @@ class Bill {
             ?.map((e) => BillPayment.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
+    targetDayOfMonth: (json['targetDayOfMonth'] as num?)?.toInt(),
   );
 
   /// Returns true if this bill repeats periodically (Monthly, Yearly, Custom).
@@ -1180,7 +1204,7 @@ class Bill {
     return occurrenceDate.subtract(Duration(days: advanceDays));
   }
 
-  /// Advances a date by one month, clamping day to valid range (e.g. Jan 31 -> Feb 28/29).
+  /// Advances a date from the bill's stable day-of-month anchor.
   DateTime advanceMonthly(DateTime date) {
     var year = date.year;
     var month = date.month + 1;
@@ -1192,11 +1216,13 @@ class Bill {
     return DateTime(
       year,
       month,
-      date.day.clamp(1, maxDay),
+      targetDayOfMonth.clamp(1, maxDay),
       date.hour,
       date.minute,
     );
   }
+
+  static bool isValidAmount(double amount) => amount.isFinite && amount > 0;
 
   /// Advances a date by one year, clamping day for leap years (e.g. Feb 29 2028 -> Feb 28 2029).
   DateTime advanceYearly(DateTime date) {

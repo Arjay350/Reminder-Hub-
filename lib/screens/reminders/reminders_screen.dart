@@ -98,25 +98,15 @@ class _RemindersScreenState extends State<RemindersScreen>
   }
 
   DateTime _parseEntryDateTime(DateTime date, String timeStr) {
-    int hour = 9;
-    int minute = 0;
-    try {
-      final clean = timeStr.trim().toUpperCase();
-      final isPm = clean.contains('PM');
-      final isAm = clean.contains('AM');
-      final numPart = clean.replaceAll('AM', '').replaceAll('PM', '').trim();
-      final parts = numPart.split(':');
-      hour = int.parse(parts[0]);
-      if (parts.length > 1) {
-        minute = int.parse(parts[1]);
-      }
-      if (isPm && hour < 12) hour += 12;
-      if (isAm && hour == 12) hour = 0;
-    } catch (_) {
-      hour = 9;
-      minute = 0;
-    }
-    return DateTime(date.year, date.month, date.day, hour, minute);
+    final parsedTime = Reminder.parseTime(timeStr);
+    if (parsedTime == null) return DateUtils.dateOnly(date);
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      parsedTime.hour,
+      parsedTime.minute,
+    );
   }
 
   Future<void> _loadReminders() async {
@@ -359,10 +349,13 @@ class _RemindersScreenState extends State<RemindersScreen>
                             style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        Text(
-                          '$completedCount completed',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        Flexible(
+                          child: Text(
+                            '$completedCount completed',
+                            textAlign: TextAlign.right,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
                       ],
@@ -476,6 +469,7 @@ class _RemindersScreenState extends State<RemindersScreen>
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final e = filtered[index];
+                          final titlePreview = Formatters.previewText(e.title);
                           final now = DateTime.now();
                           final dueAt = _parseEntryDateTime(e.date, e.time);
                           final isOverdue = !e.isCompleted && dueAt.isBefore(now);
@@ -535,156 +529,207 @@ class _RemindersScreenState extends State<RemindersScreen>
                                         vertical: 12,
                                       ),
                                       onTap: () => _openEditDialog(e),
-                                      child: ListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        leading: Container(
-                                          padding: const EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            color: e.categoryColor.withValues(
-                                              alpha: 0.12,
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: e.categoryColor.withValues(
+                                                alpha: 0.12,
+                                              ),
+                                              shape: BoxShape.circle,
                                             ),
-                                            shape: BoxShape.circle,
+                                            child: Icon(
+                                              e.categoryIcon,
+                                              color: e.categoryColor,
+                                              size: 20,
+                                            ),
                                           ),
-                                          child: Icon(
-                                            e.categoryIcon,
-                                            color: e.categoryColor,
-                                            size: 20,
-                                          ),
-                                        ),
-                                        title: Row(
-                                          children: [
-                                            Expanded(
-                                              child: AnimatedOpacity(
-                                                duration: const Duration(
-                                                  milliseconds: 220,
-                                                ),
-                                                opacity: e.isCompleted
-                                                    ? .55
-                                                    : 1,
-                                                child: Text(
-                                                  e.title,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 15,
-                                                    decoration: e.isCompleted
-                                                        ? TextDecoration
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                AnimatedOpacity(
+                                                  duration: const Duration(
+                                                    milliseconds: 220,
+                                                  ),
+                                                  opacity: e.isCompleted
+                                                      ? .55
+                                                      : 1,
+                                                  child: Text(
+                                                    titlePreview,
+                                                    maxLines: 3,
+                                                    softWrap: true,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize:
+                                                          _calculateTitleFontSize(
+                                                            e.title,
+                                                          ),
+                                                      height: 1.25,
+                                                      decoration: e.isCompleted
+                                                          ? TextDecoration
                                                               .lineThrough
-                                                        : null,
-                                                    color: e.isCompleted
-                                                        ? Colors.grey
-                                                        : null,
+                                                          : null,
+                                                      color: e.isCompleted
+                                                          ? Colors.grey
+                                                          : null,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: e.categoryColor
-                                                    .withValues(alpha: 0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                e.category,
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: e.categoryColor,
+                                                const SizedBox(height: 6),
+                                                Wrap(
+                                                  spacing: 6,
+                                                  runSpacing: 4,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment.center,
+                                                  children: [
+                                                    AppStatusBadge(
+                                                      label: statusLabel,
+                                                      color: statusColor,
+                                                      icon: e.isCompleted
+                                                          ? Icons
+                                                              .check_circle_outline
+                                                          : isOverdue
+                                                          ? Icons.error_outline
+                                                          : Icons
+                                                              .schedule_outlined,
+                                                    ),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 2.5,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: e.categoryColor
+                                                            .withValues(
+                                                              alpha: 0.12,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(6),
+                                                        border: Border.all(
+                                                          color: e.categoryColor
+                                                              .withValues(
+                                                                alpha: 0.22,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      child: Text(
+                                                        e.category,
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color:
+                                                              e.categoryColor,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
+                                                const SizedBox(height: 5),
+                                                Text(
+                                                  e.subtitle,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: isDark
+                                                        ? theme.colorScheme
+                                                              .onSurfaceVariant
+                                                        : theme.colorScheme
+                                                              .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                        subtitle: Padding(
-                                          padding: const EdgeInsets.only(top: 6),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              AppStatusBadge(
-                                                label: statusLabel,
-                                                color: statusColor,
-                                                icon: e.isCompleted
-                                                    ? Icons.check_circle_outline
-                                                    : isOverdue
-                                                    ? Icons.error_outline
-                                                    : Icons.schedule_outlined,
-                                              ),
-                                              const SizedBox(height: 5),
-                                              Text(
-                                                e.subtitle,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: isDark
-                                                      ? theme.colorScheme
-                                                            .onSurfaceVariant
-                                                      : theme.colorScheme
-                                                            .onSurfaceVariant,
+                                              if (e.sourceType ==
+                                                  ReminderSourceType.general)
+                                                SizedBox(
+                                                  width: 48,
+                                                  height: 48,
+                                                  child: Checkbox(
+                                                    value: e.isCompleted,
+                                                    activeColor: theme
+                                                        .colorScheme
+                                                        .primary,
+                                                    materialTapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .padded,
+                                                    semanticLabel:
+                                                        'Mark ${e.title} complete',
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(6),
+                                                        ),
+                                                    onChanged: (val) =>
+                                                        _toggleCompletion(
+                                                          e,
+                                                          val ?? false,
+                                                        ),
+                                                  ),
                                                 ),
+                                              IconButton(
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      minWidth: 48,
+                                                      minHeight: 48,
+                                                    ),
+                                                icon: Icon(
+                                                  Icons.edit_outlined,
+                                                  size: 19,
+                                                  color: isDark
+                                                      ? Colors.grey.shade400
+                                                      : Colors.grey.shade700,
+                                                ),
+                                                onPressed: () =>
+                                                    _openEditDialog(e),
+                                                tooltip: 'Edit',
+                                              ),
+                                              IconButton(
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      minWidth: 48,
+                                                      minHeight: 48,
+                                                    ),
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  color: Colors.red,
+                                                  size: 19,
+                                                ),
+                                                onPressed: () async {
+                                                  final confirm =
+                                                      await showConfirmDeleteDialog(
+                                                        context,
+                                                        title:
+                                                            'Delete ${e.category}?',
+                                                        message:
+                                                            'Are you sure you want to delete "${e.title}"?',
+                                                      );
+                                                  if (confirm) _deleteEntry(e);
+                                                },
+                                                tooltip: 'Delete',
                                               ),
                                             ],
                                           ),
-                                        ),
-                                        trailing: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            if (e.sourceType ==
-                                                ReminderSourceType.general)
-                                              Transform.scale(
-                                                scale: 0.9,
-                                                child: Checkbox(
-                                                  value: e.isCompleted,
-                                                  activeColor:
-                                                      theme.colorScheme.primary,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6,
-                                                        ),
-                                                  ),
-                                                  onChanged: (val) =>
-                                                      _toggleCompletion(
-                                                        e,
-                                                        val ?? false,
-                                                      ),
-                                                ),
-                                              ),
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.edit_outlined,
-                                                size: 20,
-                                                color: isDark
-                                                    ? Colors.grey.shade400
-                                                    : Colors.grey.shade700,
-                                              ),
-                                              onPressed: () =>
-                                                  _openEditDialog(e),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.delete_outline,
-                                                color: Colors.red,
-                                                size: 20,
-                                              ),
-                                              onPressed: () async {
-                                                final confirm =
-                                                    await showConfirmDeleteDialog(
-                                                      context,
-                                                      title:
-                                                          'Delete ${e.category}?',
-                                                      message:
-                                                          'Are you sure you want to delete "${e.title}"?',
-                                                    );
-                                                if (confirm) _deleteEntry(e);
-                                              },
-                                            ),
-                                          ],
-                                        ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -793,5 +838,22 @@ class _RemindersScreenState extends State<RemindersScreen>
         break;
     }
     if (result != null) await _loadReminders();
+  }
+
+  double _calculateTitleFontSize(String title) {
+    final trimmed = title.trim();
+    final length = trimmed.length;
+    if (length == 0) return 15.0;
+    final words = trimmed.split(RegExp(r'\s+'));
+    int maxWordLength = 0;
+    for (final w in words) {
+      if (w.length > maxWordLength) maxWordLength = w.length;
+    }
+
+    if (length > 70 || maxWordLength >= 22) return 10.5;
+    if (length > 48 || maxWordLength >= 16) return 11.5;
+    if (length > 32 || maxWordLength >= 12) return 12.5;
+    if (length > 18 || maxWordLength >= 8) return 13.5;
+    return 15.0;
   }
 }

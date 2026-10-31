@@ -7,7 +7,13 @@ class SecurityService {
   SecurityService._internal();
 
   final LocalAuthentication _auth = LocalAuthentication();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      resetOnError: false,
+      migrateOnAlgorithmChange: true,
+      migrateWithBackup: true,
+    ),
+  );
 
   Future<bool> isBiometricsAvailable() async {
     try {
@@ -82,6 +88,24 @@ class SecurityService {
       key: 'reminder_hub_notebook_encryption_key',
       value: key,
     );
+  }
+
+  Future<String?> getAccountEncryptionKey() async =>
+      _storage.read(key: 'reminder_hub_account_encryption_key');
+
+  Future<void> setAccountEncryptionKey(String key) async {
+    await _storage.write(
+      key: 'reminder_hub_account_encryption_key',
+      value: key,
+    );
+  }
+
+  Future<void> removeAccountEncryptionKey() async {
+    await _storage.delete(key: 'reminder_hub_account_encryption_key');
+  }
+
+  Future<void> removeNotebookEncryptionKey() async {
+    await _storage.delete(key: 'reminder_hub_notebook_encryption_key');
   }
 
   Future<bool> verifyPin(String enteredPin) async {

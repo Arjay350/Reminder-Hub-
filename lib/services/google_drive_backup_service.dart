@@ -10,6 +10,8 @@ import '../models/app_models.dart';
 import '../models/diary_models.dart';
 import '../models/pet_models.dart';
 import '../models/study_models.dart';
+import '../core/security/security_service.dart';
+import 'encryption_service.dart';
 import 'hive_service.dart';
 import 'notification_service.dart';
 import 'widget_service.dart';
@@ -225,16 +227,21 @@ class GoogleDriveBackupService {
   // ---------------------------------------------------------------------------
 
   /// Creates a full, versioned, checksum-validated backup and uploads it to Google Drive appDataFolder.
-  Future<GoogleDriveBackupResult> createBackup() async {
+  Future<GoogleDriveBackupResult> createBackup({
+    required String passphrase,
+  }) async {
     try {
       final driveApi = await _getDriveApi(promptIfNecessary: true);
       final hive = HiveService.instance;
       await hive.ensureInitialized();
 
       final now = DateTime.now().toUtc();
-      final backupData = _buildBackupMap(hive, now);
+      final backupData = await _buildBackupMap(hive, now);
 
-      final jsonString = const JsonEncoder.withIndent('  ').convert(backupData);
+      final jsonString = await EncryptionService.instance.encryptBackupJson(
+        const JsonEncoder.withIndent('  ').convert(backupData),
+        passphrase,
+      );
       final jsonBytes = utf8.encode(jsonString);
 
       final fileName = 'reminderhub_cloud_backup_${now.millisecondsSinceEpoch}.json';
@@ -340,7 +347,10 @@ class GoogleDriveBackupService {
   /// Restores data from the specified Google Drive backup file ID.
   /// Employs a pre-restore safety snapshot so that if parsing or writing fails,
   /// existing local data is restored without corruption.
-  Future<GoogleDriveRestoreResult> restoreBackup(String fileId) async {
+  Future<GoogleDriveRestoreResult> restoreBackup(
+    String fileId, {
+    required String passphrase,
+  }) async {
     final hive = HiveService.instance;
     await hive.ensureInitialized();
 
@@ -357,7 +367,21 @@ class GoogleDriveBackupService {
       await for (final chunk in media.stream) {
         bytes.addAll(chunk);
       }
-      jsonContent = utf8.decode(bytes);
+      final downloaded = utf8.decode(bytes);
+      final downloadedMap = jsonDecode(downloaded);
+      if (downloadedMap is! Map) {
+        return const GoogleDriveRestoreResult(
+          success: false,
+          errorMessage: 'Invalid backup file: root must be a JSON object.',
+        );
+      }
+      jsonContent =
+          downloadedMap['format'] == EncryptionService.portableBackupFormat
+          ? await EncryptionService.instance.decryptBackupJson(
+              downloaded,
+              passphrase,
+            )
+          : downloaded;
     } catch (e) {
       return GoogleDriveRestoreResult(
         success: false,
@@ -410,13 +434,18 @@ class GoogleDriveBackupService {
             )
             .toString();
         if (storedChecksum != altChecksum) {
-          debugPrint('Checksum mismatch warning. Proceeding with schema validation.');
+          return const GoogleDriveRestoreResult(
+            success: false,
+            errorMessage: 'Backup integrity check failed.',
+          );
         }
       }
     }
 
     // 3. Create Safety Snapshot of current local state for reliable rollback
-    final snapshot = _createSafetySnapshot(hive);
+    final snapshot = await _createSafetySnapshot(hive);
+    final previousNotebookKey =
+        await SecurityService.instance.getNotebookEncryptionKey();
 
     var notificationsCancelled = false;
     try {
@@ -663,6 +692,17 @@ class GoogleDriveBackupService {
         }
       }
 
+      if (dataMap.containsKey('notebookEncryptionKey')) {
+        final key = dataMap['notebookEncryptionKey'];
+        if (key == null) {
+          await SecurityService.instance.removeNotebookEncryptionKey();
+        } else if (key is String) {
+          await SecurityService.instance.setNotebookEncryptionKey(key);
+        } else {
+          throw const FormatException('Invalid notebook recovery key.');
+        }
+      }
+
       // Data version
       final dataVersion = (dataMap['dataVersion'] as num?)?.toInt() ??
           HiveService.currentDataVersion;
@@ -679,8 +719,22 @@ class GoogleDriveBackupService {
         restoredCounts: counts,
       );
     } catch (e) {
-      debugPrint('Restore failed with error: $e. Executing rollback from safety snapshot...');
+      debugPrint('Google Drive restore failed; restoring local snapshot.');
+      if (snapshot.accountEncryptionKey != null) {
+        await SecurityService.instance.setAccountEncryptionKey(
+          snapshot.accountEncryptionKey!,
+        );
+      } else {
+        await SecurityService.instance.removeAccountEncryptionKey();
+      }
       await _rollbackToSnapshot(hive, snapshot);
+      if (previousNotebookKey != null) {
+        await SecurityService.instance.setNotebookEncryptionKey(
+          previousNotebookKey,
+        );
+      } else {
+        await SecurityService.instance.removeNotebookEncryptionKey();
+      }
       if (notificationsCancelled) {
         await NotificationService.instance.rescheduleAll();
       }
@@ -695,7 +749,10 @@ class GoogleDriveBackupService {
   // Internal Helpers: Payload Builder & Snapshot/Rollback
   // ---------------------------------------------------------------------------
 
-  Map<String, dynamic> _buildBackupMap(HiveService hive, DateTime now) {
+  Future<Map<String, dynamic>> _buildBackupMap(
+    HiveService hive,
+    DateTime now,
+  ) async {
     final base = <String, dynamic>{
       'format': _cloudFormat,
       'app': _appIdentifier,
@@ -731,6 +788,8 @@ class GoogleDriveBackupService {
           hive.getStudyHistory().map((e) => e.toJson()).toList(),
       'studySettings': hive.getStudySettings().toJson(),
       'studySubjects': hive.getStudySubjects(),
+      'notebookEncryptionKey':
+          await SecurityService.instance.getNotebookEncryptionKey(),
     };
 
     final contentForChecksum = jsonEncode(base);
@@ -739,14 +798,16 @@ class GoogleDriveBackupService {
     return base;
   }
 
-  _LocalDataSnapshot _createSafetySnapshot(HiveService hive) {
+  Future<_LocalDataSnapshot> _createSafetySnapshot(HiveService hive) async {
     return _LocalDataSnapshot(
       reminders: hive.getReminders(),
       reminderHistory: hive.getReminderHistory(),
       schoolClasses: hive.getSchoolClasses(),
       schoolDayModes: hive.getDayClassModes(),
       aiAccounts: hive.getAIAccounts(),
-      userAccounts: hive.getUserAccounts(),
+      userAccountStorageRecords: hive.getUserAccountStorageRecords(),
+      accountEncryptionKey:
+          await SecurityService.instance.getAccountEncryptionKey(),
       bills: hive.getBills(),
       gasPurchases: hive.getGasPurchases(),
       suppliers: hive.getSuppliers(),
@@ -782,9 +843,10 @@ class GoogleDriveBackupService {
       for (final a in snapshot.aiAccounts) {
         await hive.saveAIAccount(a);
       }
-      for (final u in snapshot.userAccounts) {
-        await hive.saveUserAccount(u);
-      }
+      await hive.restoreUserAccountStorageRecords(
+        snapshot.userAccountStorageRecords,
+        encryptionKey: snapshot.accountEncryptionKey,
+      );
       for (final b in snapshot.bills) {
         await hive.saveBill(b);
       }
@@ -816,8 +878,9 @@ class GoogleDriveBackupService {
         await hive.saveStudySubject(s);
       }
       await hive.setDataVersion(snapshot.dataVersion);
-    } catch (e) {
-      debugPrint('Critical error during rollback: $e');
+    } catch (_) {
+      debugPrint('Critical error during Google Drive restore rollback.');
+      rethrow;
     }
   }
 }
@@ -829,7 +892,8 @@ class _LocalDataSnapshot {
     required this.schoolClasses,
     required this.schoolDayModes,
     required this.aiAccounts,
-    required this.userAccounts,
+    required this.userAccountStorageRecords,
+    required this.accountEncryptionKey,
     required this.bills,
     required this.gasPurchases,
     required this.suppliers,
@@ -850,7 +914,8 @@ class _LocalDataSnapshot {
   final List<SchoolClass> schoolClasses;
   final Map<int, String> schoolDayModes;
   final List<AIAccount> aiAccounts;
-  final List<UserAccount> userAccounts;
+  final Map<String, String> userAccountStorageRecords;
+  final String? accountEncryptionKey;
   final List<Bill> bills;
   final List<GasPurchase> gasPurchases;
   final List<Supplier> suppliers;

@@ -13,6 +13,7 @@ import '../../services/pet_service.dart';
 import '../../services/feedback_service.dart';
 import '../../models/pet_models.dart';
 import '../../widgets/custom_card.dart';
+import '../../widgets/backup_passphrase_dialog.dart';
 import '../../widgets/profile_image_cropper_dialog.dart';
 import '../../widgets/secure_action_gate.dart';
 import '../about/about_screen.dart';
@@ -547,14 +548,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   subtitle: const Text(
-                    'Export database entries to JSON file',
+                    'Create a passphrase-encrypted database backup',
                     style: TextStyle(fontSize: 12),
                   ),
                   trailing: const Icon(Icons.chevron_right, size: 20),
                   onTap: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     try {
-                      final path = await BackupService.instance.exportBackup();
+                      final passphrase = await showBackupPassphraseDialog(
+                        context,
+                        restoring: false,
+                      );
+                      if (passphrase == null || !mounted) return;
+                      final path = await BackupService.instance.exportBackup(
+                        passphrase: passphrase,
+                      );
                       if (mounted && path != null) {
                         messenger.showSnackBar(
                           SnackBar(content: Text('Backup saved: $path')),
@@ -591,7 +599,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   subtitle: const Text(
-                    'Restore database from local JSON file',
+                    'Restore an encrypted backup or older JSON backup',
                     style: TextStyle(fontSize: 12),
                   ),
                   trailing: const Icon(Icons.chevron_right, size: 20),
@@ -618,8 +626,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     );
-                    if (shouldRestore != true || !mounted) return;
-                    final success = await BackupService.instance.importBackup();
+                    if (shouldRestore != true || !context.mounted) return;
+                    final passphrase = await showBackupPassphraseDialog(
+                      context,
+                      restoring: true,
+                    );
+                    if (passphrase == null || !context.mounted) return;
+                    bool success;
+                    try {
+                      success = await BackupService.instance.importBackup(
+                        passphrase: passphrase,
+                      );
+                    } catch (error) {
+                      if (mounted) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Could not restore backup: $error'),
+                          ),
+                        );
+                      }
+                      return;
+                    }
                     if (!mounted) return;
                     messenger.showSnackBar(
                       SnackBar(
@@ -859,7 +886,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       subtitle: const Text(
-                        'Automatically backs up when app starts (if signed in)',
+                        'Prompts for a passphrase on startup; it is never saved',
                         style: TextStyle(fontSize: 12),
                       ),
                       value: _settings.autoGoogleDriveBackup,
@@ -1027,9 +1054,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _handleGoogleDriveBackup() async {
     if (_isGoogleDriveBackingUp) return;
+    final passphrase = await showBackupPassphraseDialog(
+      context,
+      restoring: false,
+    );
+    if (passphrase == null || !mounted) return;
     setState(() => _isGoogleDriveBackingUp = true);
     try {
-      final result = await GoogleDriveBackupService.instance.createBackup();
+      final result = await GoogleDriveBackupService.instance.createBackup(
+        passphrase: passphrase,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1115,8 +1149,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (confirmed != true || !mounted) return;
 
+      final passphrase = await showBackupPassphraseDialog(
+        context,
+        restoring: true,
+      );
+      if (passphrase == null || !mounted) return;
       final result = await GoogleDriveBackupService.instance.restoreBackup(
         selectedBackup.id,
+        passphrase: passphrase,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

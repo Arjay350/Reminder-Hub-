@@ -18,6 +18,12 @@ class Formatters {
     return formatter.format(amount);
   }
 
+  static String previewText(String value, {int maxCodePoints = 240}) {
+    final runes = value.runes;
+    if (runes.length <= maxCodePoints) return value;
+    return '${String.fromCharCodes(runes.take(maxCodePoints))}…';
+  }
+
   static String maskPassword(String password) {
     return '••••••••••••';
   }

@@ -7,12 +7,18 @@ class ClassStatus {
     required this.status,
     this.timeRemaining,
     this.timeUntilStart,
+    this.targetTime,
   });
 
   final SchoolClass schoolClass;
   final ClassState status;
   final Duration? timeRemaining; // For current classes: time until end
   final Duration? timeUntilStart; // For next classes: time until start
+
+  /// The absolute DateTime when the countdown target expires.
+  /// Used by the Android widget to recalculate fresh countdowns from
+  /// the device's current wall clock.
+  final DateTime? targetTime;
 
   String get timeRemainingFormatted {
     if (timeRemaining == null) return '';
@@ -25,7 +31,8 @@ class ClassStatus {
   }
 
   static String _formatDuration(Duration d) {
-    if (d.isNegative) return '0m';
+    if (d.isNegative || d == Duration.zero) return '0m';
+    if (d.inSeconds < 60) return '< 1m';
     final hours = d.inHours;
     final minutes = d.inMinutes % 60;
     if (hours > 0 && minutes > 0) {
@@ -155,10 +162,12 @@ class TimetableCalculationService {
     return map;
   }
 
-  /// Calculates the complete timetable status for a given day
+  /// Calculates the complete timetable status for a given day.
+  ///
+  /// Uses second-level precision so the Android widget receives accurate
+  /// absolute target timestamps for countdown display.
   DayTimetableStatus calculateDayStatus(List<SchoolClass> allClasses, DateTime now) {
     final weekday = now.weekday; // 1=Mon, ..., 7=Sun
-    final nowMinutes = now.hour * 60 + now.minute;
 
     // Get all classes for today
     final todayClasses = getClassesForDay(allClasses, weekday);
@@ -170,21 +179,34 @@ class TimetableCalculationService {
       final endMin = parseTimeToMinutes(c.endTime);
       if (endMin <= startMin) continue; // Invalid class
 
+      // Compute precise DateTime targets for absolute timestamps
+      final startDt = DateTime(now.year, now.month, now.day,
+          startMin ~/ 60, startMin % 60);
+      final endDt = DateTime(now.year, now.month, now.day,
+          endMin ~/ 60, endMin % 60);
+
       ClassState state;
       Duration? timeRemaining;
       Duration? timeUntilStart;
+      DateTime? targetTime;
 
-      if (nowMinutes < startMin) {
-        // Class hasn't started yet
+      if (now.isBefore(startDt)) {
+        // Class hasn't started yet — use second-level diff
         state = ClassState.upcoming;
-        timeUntilStart = Duration(minutes: startMin - nowMinutes);
-      } else if (nowMinutes >= startMin && nowMinutes < endMin) {
-        // Class is currently active
+        timeUntilStart = startDt.difference(now);
+        // Clamp any sub-zero remainder from rounding
+        if (timeUntilStart.isNegative) timeUntilStart = Duration.zero;
+        targetTime = startDt;
+      } else if (!now.isBefore(startDt) && now.isBefore(endDt)) {
+        // Class is currently active — use second-level diff
         state = ClassState.current;
-        timeRemaining = Duration(minutes: endMin - nowMinutes);
+        timeRemaining = endDt.difference(now);
+        if (timeRemaining.isNegative) timeRemaining = Duration.zero;
+        targetTime = endDt;
       } else {
         // Class has ended
         state = ClassState.completed;
+        targetTime = null;
       }
 
       classStatuses.add(ClassStatus(
@@ -192,6 +214,7 @@ class TimetableCalculationService {
         status: state,
         timeRemaining: timeRemaining,
         timeUntilStart: timeUntilStart,
+        targetTime: targetTime,
       ));
     }
 
@@ -208,6 +231,7 @@ class TimetableCalculationService {
         schoolClass: nextClass.schoolClass,
         status: ClassState.next,
         timeUntilStart: nextClass.timeUntilStart,
+        targetTime: nextClass.targetTime,
       );
     }
 

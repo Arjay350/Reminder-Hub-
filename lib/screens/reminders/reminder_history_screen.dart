@@ -101,7 +101,8 @@ class _ReminderHistoryScreenState extends State<ReminderHistoryScreen> {
         return false;
       }
       if (_selectedRecurrenceFilter == 'Recurring' &&
-          (r.repeat.trim().isEmpty || r.repeat.trim().toLowerCase() == 'none')) {
+          (r.repeat.trim().isEmpty ||
+              r.repeat.trim().toLowerCase() == 'none')) {
         return false;
       }
       if (_searchQuery.isNotEmpty) {
@@ -294,9 +295,12 @@ class _ReminderHistoryScreenState extends State<ReminderHistoryScreen> {
                                         Expanded(
                                           child: Text(
                                             item.title,
-                                            style: const TextStyle(
+                                            softWrap: true,
+                                            style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 15,
+                                              fontSize: _calculateTitleFontSize(
+                                                item.title,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -397,5 +401,22 @@ class _ReminderHistoryScreenState extends State<ReminderHistoryScreen> {
         ],
       ),
     );
+  }
+
+  double _calculateTitleFontSize(String title) {
+    final trimmed = title.trim();
+    final length = trimmed.length;
+    if (length == 0) return 15.0;
+    final words = trimmed.split(RegExp(r'\s+'));
+    int maxWordLength = 0;
+    for (final w in words) {
+      if (w.length > maxWordLength) maxWordLength = w.length;
+    }
+
+    if (length > 70 || maxWordLength >= 22) return 10.5;
+    if (length > 48 || maxWordLength >= 16) return 11.5;
+    if (length > 32 || maxWordLength >= 12) return 12.5;
+    if (length > 18 || maxWordLength >= 8) return 13.5;
+    return 15.0;
   }
 }

@@ -16,9 +16,25 @@ class NotificationService {
   static final NotificationService instance = NotificationService._internal();
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+  FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  Future<void>? _initialization;
+
+  bool get isInitialized => _initialized;
+
+  @visibleForTesting
+  void setNotificationsPluginForTesting(
+    FlutterLocalNotificationsPlugin plugin,
+  ) {
+    _notificationsPlugin = plugin;
+  }
+
+  @visibleForTesting
+  void resetForTesting() {
+    _initialized = false;
+    _initialization = null;
+  }
 
   // ---------------------------------------------------------------------------
   // Notification Channel Constants
@@ -48,6 +64,26 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
+    // Share one in-flight initialization across concurrent startup/resume and
+    // scheduling calls. Without this, callers can race plugin initialization.
+    final inFlight = _initialization;
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+
+    final initialization = _initialize();
+    _initialization = initialization;
+    try {
+      await initialization;
+    } finally {
+      if (identical(_initialization, initialization)) {
+        _initialization = null;
+      }
+    }
+  }
+
+  Future<void> _initialize() async {
     if (kIsWeb) {
       _initialized = true;
       return;
@@ -56,19 +92,12 @@ class NotificationService {
     try {
       // 1. Initialize local timezone
       tz.initializeTimeZones();
-      try {
-        final tzInfo = await FlutterTimezone.getLocalTimezone();
-        final String timeZoneName = tzInfo.identifier;
-        tz.setLocalLocation(tz.getLocation(timeZoneName));
-        debugPrint(
-          'NotificationService: Local timezone configured -> $timeZoneName',
-        );
-      } catch (e) {
-        debugPrint('Could not get local timezone, fallback used: $e');
-        try {
-          tz.setLocalLocation(tz.getLocation('UTC'));
-        } catch (_) {}
-      }
+      final tzInfo = await FlutterTimezone.getLocalTimezone();
+      final String timeZoneName = tzInfo.identifier;
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      debugPrint(
+        'NotificationService: Local timezone configured -> $timeZoneName',
+      );
 
       // 2. Initialize notification settings
       const androidSettings = AndroidInitializationSettings(
@@ -85,12 +114,15 @@ class NotificationService {
         iOS: darwinSettings,
       );
 
-      await _notificationsPlugin.initialize(
+      final initSuccess = await _notificationsPlugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (response) {
           debugPrint('Notification tapped: ${response.payload}');
         },
       );
+      if (initSuccess == false) {
+        throw StateError('Notification plugin failed to initialize');
+      }
 
       // 3. Create high-priority Android notification channels
       if (Platform.isAndroid) {
@@ -141,10 +173,12 @@ class NotificationService {
           );
         }
       }
+      _initialized = true;
     } catch (e) {
+      _initialized = false;
       debugPrint('NotificationService init error: $e');
+      rethrow;
     }
-    _initialized = true;
   }
 
   // ---------------------------------------------------------------------------
@@ -347,8 +381,19 @@ class NotificationService {
     DateTimeComponents? matchDateTimeComponents,
     String? payload,
   }) async {
-    await init();
+    try {
+      await init();
+    } catch (e) {
+      debugPrint('Cannot schedule notification id=$id: init failed: $e');
+      return false;
+    }
     if (kIsWeb) return false;
+    if (!_initialized) {
+      debugPrint(
+        'Cannot schedule notification id=$id: NotificationService not initialized',
+      );
+      return false;
+    }
 
     final notificationsGranted = await isNotificationPermissionGranted();
     if (!notificationsGranted) {
@@ -479,22 +524,37 @@ class NotificationService {
   Future<void> scheduleReminderNotification(Reminder reminder) async {
     if (kIsWeb) return;
 
-    final id = _idFromUuid(reminder.id);
-    await cancelNotification(id);
-    if (reminder.completed) return;
+    try {
+      await init();
+    } catch (error) {
+      debugPrint(
+        'Cannot schedule reminder ${reminder.id}: initialization failed: $error',
+      );
+      return;
+    }
+    if (!_initialized) return;
 
-    final parts = reminder.time.split(':');
-    final hour = int.tryParse(parts[0]) ?? 9;
-    final minute = parts.length > 1
-        ? (int.tryParse(parts[1].replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
-        : 0;
+    final id = _idFromUuid(reminder.id);
+    if (reminder.completed) {
+      await cancelNotification(id);
+      return;
+    }
+
+    final parsedTime = Reminder.parseTime(reminder.time);
+    if (parsedTime == null) {
+      debugPrint(
+        'Cannot schedule reminder ${reminder.id}: invalid saved time.',
+      );
+      return;
+    }
+    await cancelNotification(id);
 
     final eventDateTime = DateTime(
       reminder.date.year,
       reminder.date.month,
       reminder.date.day,
-      hour,
-      minute,
+      parsedTime.hour,
+      parsedTime.minute,
     );
 
     final notifyAt = _applyReminderBefore(
@@ -528,14 +588,25 @@ class NotificationService {
         break;
 
       case 'monthly':
-        matchComponents = DateTimeComponents.dayOfMonthAndTime;
-        scheduledDate = _calculateNextMonthlyDate(
-          notifyAt,
-          notifyAt.day,
-          notifyAt.hour,
-          notifyAt.minute,
-          notifyAt.second,
+        final occurrence = calculateNextMonthlyReminderOccurrence(
+          baseDate: reminder.date,
+          targetDayOfMonth: reminder.targetDayOfMonth ?? reminder.date.day,
+          eventTime: parsedTime,
+          reminderBefore: reminder.reminderBefore,
+          referenceDate: now,
         );
+        scheduledDate = occurrence.notificationDate;
+
+        final anchorDay = reminder.targetDayOfMonth ?? reminder.date.day;
+        final hasOffset = hasAdvanceOffset(reminder.reminderBefore);
+        // Only invariant monthly schedules (anchorDay <= 28 and no advance offset)
+        // can safely use native DateTimeComponents.dayOfMonthAndTime without drifting
+        // or triggering on wrong dates in shorter months.
+        if (anchorDay <= 28 && !hasOffset) {
+          matchComponents = DateTimeComponents.dayOfMonthAndTime;
+        } else {
+          matchComponents = null;
+        }
         break;
 
       case 'yearly':
@@ -924,6 +995,16 @@ class NotificationService {
   Future<void> rescheduleAll() async {
     if (kIsWeb) return;
 
+    try {
+      await init();
+    } catch (error) {
+      debugPrint(
+        'NotificationService.rescheduleAll: initialization failed: $error',
+      );
+      return;
+    }
+    if (!_initialized) return;
+
     final hive = HiveService.instance;
     await hive.ensureInitialized();
 
@@ -963,8 +1044,7 @@ class NotificationService {
       final activeIds = schoolClasses.map((item) => item.id).toSet();
       // Remove stale school occurrences for classes deleted in Hive. Payloads
       // identify ownership; no unrelated reminder/bill IDs are touched.
-      final pending = await _notificationsPlugin
-          .pendingNotificationRequests();
+      final pending = await _notificationsPlugin.pendingNotificationRequests();
       for (final request in pending) {
         final payload = request.payload ?? '';
         if (!payload.startsWith('school_class:')) continue;
@@ -1060,10 +1140,27 @@ class NotificationService {
   // Helper & Calculation Utilities
   // ---------------------------------------------------------------------------
 
+  /// Checks whether a reminder before string specifies an advance notification offset.
+  static bool hasAdvanceOffset(String reminderBefore) {
+    final clean = reminderBefore.trim().toLowerCase();
+    if (clean.isEmpty ||
+        clean == 'at time' ||
+        clean == 'at start' ||
+        clean == 'at class time' ||
+        clean == 'on time' ||
+        clean == 'none') {
+      return false;
+    }
+    return true;
+  }
+
   /// Parses reminder offset strings like "At time", "At start", "5 minutes", "10 minutes",
   /// "15 minutes", "30 minutes", "45 minutes", "1 hour", "2 hours", "1 day", "2 days", "1 week",
   /// or custom strings like "Custom: 45 minutes" or "45 mins".
-  DateTime _applyReminderBefore(DateTime eventTime, String reminderBefore) {
+  static DateTime applyReminderBefore(
+    DateTime eventTime,
+    String reminderBefore,
+  ) {
     final clean = reminderBefore.trim().toLowerCase();
     if (clean.isEmpty ||
         clean == 'at time' ||
@@ -1143,6 +1240,75 @@ class NotificationService {
     }
 
     return eventTime;
+  }
+
+  DateTime _applyReminderBefore(DateTime eventTime, String reminderBefore) =>
+      applyReminderBefore(eventTime, reminderBefore);
+
+  /// Calculates the next future occurrence of a monthly recurring reminder.
+  ///
+  /// Separates the event occurrence date from the advance notification date.
+  /// Each monthly event occurrence is calculated from the intended recurrence anchor
+  /// ([targetDayOfMonth] ?? [baseDate.day]), clamping safely to that specific
+  /// month's length without permanently drifting across months (e.g. Feb 28 does
+  /// not cause March to drift to 28).
+  ///
+  /// The advance notification date is then calculated from that event occurrence
+  /// using [reminderBefore].
+  ///
+  /// Correctly handles:
+  /// - Month-end dates (28, 29, 30, 31)
+  /// - February in leap (29) and non-leap (28) years
+  /// - Year transitions
+  /// - Advance offsets where the notification falls in the preceding month (e.g. 1st of month with 1 day before)
+  static ({DateTime eventDate, DateTime notificationDate})
+  calculateNextMonthlyReminderOccurrence({
+    required DateTime baseDate,
+    required int? targetDayOfMonth,
+    required TimeOfDay eventTime,
+    required String reminderBefore,
+    DateTime? referenceDate,
+  }) {
+    final now = referenceDate ?? DateTime.now();
+    final anchorDay = (targetDayOfMonth != null && targetDayOfMonth > 0)
+        ? targetDayOfMonth
+        : baseDate.day;
+
+    var year = baseDate.year;
+    var month = baseDate.month;
+
+    // If baseDate is far in the past, safely jump forward to 1 month prior to
+    // referenceDate to account for advance offsets that fall in the preceding month.
+    final prevMonth = now.month == 1 ? 12 : now.month - 1;
+    final prevYear = now.month == 1 ? now.year - 1 : now.year;
+    if (year < prevYear || (year == prevYear && month < prevMonth)) {
+      year = prevYear;
+      month = prevMonth;
+    }
+
+    while (true) {
+      final maxDay = DateTime(year, month + 1, 0).day;
+      final clampedDay = anchorDay.clamp(1, maxDay);
+      final eventOccurrence = DateTime(
+        year,
+        month,
+        clampedDay,
+        eventTime.hour,
+        eventTime.minute,
+      );
+
+      final notifyAt = applyReminderBefore(eventOccurrence, reminderBefore);
+
+      if (notifyAt.isAfter(now)) {
+        return (eventDate: eventOccurrence, notificationDate: notifyAt);
+      }
+
+      month++;
+      if (month > 12) {
+        month = 1;
+        year++;
+      }
+    }
   }
 
   /// Parses bill reminder schedule and returns notification DateTime at 9:00 AM.

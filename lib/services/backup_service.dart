@@ -11,6 +11,8 @@ import '../models/app_models.dart';
 import '../models/diary_models.dart';
 import '../models/pet_models.dart';
 import '../models/study_models.dart';
+import '../core/security/security_service.dart';
+import 'encryption_service.dart';
 import 'hive_service.dart';
 import 'notification_service.dart';
 import 'widget_service.dart';
@@ -68,6 +70,7 @@ class BackupService {
   }
 
   Future<String?> exportBackup({
+    required String passphrase,
     String? directoryPath,
     bool share = false,
   }) async {
@@ -104,8 +107,13 @@ class BackupService {
           hive.getStudyHistory().map((e) => e.toJson()).toList(),
       'studySettings': hive.getStudySettings().toJson(),
       'studySubjects': hive.getStudySubjects(),
+      'notebookEncryptionKey':
+          await SecurityService.instance.getNotebookEncryptionKey(),
     };
-    final contents = const JsonEncoder.withIndent('  ').convert(data);
+    final contents = await EncryptionService.instance.encryptBackupJson(
+      const JsonEncoder.withIndent('  ').convert(data),
+      passphrase,
+    );
     if (Platform.isAndroid && !share) {
       final savedUri = await FilePicker.saveFile(
         fileName: fileName,
@@ -179,29 +187,62 @@ class BackupService {
     return file.path;
   }
 
-  Future<bool> importBackup() async {
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-        dialogTitle: 'Select a Reminder Hub backup',
-      );
-      if (result.isEmpty || result.first.path == null) return false;
-      return await importBackupFromFile(result.first.path!);
-    } catch (_) {
-      return false;
-    }
+  Future<bool> importBackup({required String passphrase}) async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+      dialogTitle: 'Select a Reminder Hub backup',
+    );
+    if (result.isEmpty || result.first.path == null) return false;
+    return importBackupFromFile(
+      result.first.path!,
+      passphrase: passphrase,
+    );
   }
 
-  Future<bool> importBackupFromFile(String path) async {
+  Future<bool> importBackupFromFile(
+    String path, {
+    String? passphrase,
+  }) async {
     var notificationsCancelled = false;
+    _LocalRestoreSnapshot? snapshot;
+    String? previousNotebookKey;
+    String? previousAccountKey;
     try {
-      final data = await _readJsonMap(path);
+      final serialized = await File(path).readAsString();
+      final envelope = jsonDecode(serialized);
+      if (envelope is! Map) {
+        throw const FormatException('Backup JSON root must be an object.');
+      }
+      final envelopeMap = Map<String, dynamic>.from(envelope);
+      final isEncrypted =
+          envelopeMap['format'] == EncryptionService.portableBackupFormat;
+      final contents = isEncrypted
+          ? await EncryptionService.instance.decryptBackupJson(
+              serialized,
+              passphrase ?? '',
+            )
+          : serialized;
+      final decoded = jsonDecode(contents);
+      if (decoded is! Map) {
+        throw const FormatException('Backup JSON root must be an object.');
+      }
+      final data = Map<String, dynamic>.from(decoded);
       final parsed = _parseFullBackup(data);
-      if (parsed == null) return false;
+      if (parsed == null) {
+        throw const FormatException('Backup contents are invalid or unsupported.');
+      }
 
       final hive = HiveService.instance;
       await hive.ensureInitialized();
+      final restoreSnapshot = _LocalRestoreSnapshot.capture(hive);
+      final notebookKeyBeforeRestore =
+          await SecurityService.instance.getNotebookEncryptionKey();
+      final accountKeyBeforeRestore =
+          await SecurityService.instance.getAccountEncryptionKey();
+      snapshot = restoreSnapshot;
+      previousNotebookKey = notebookKeyBeforeRestore;
+      previousAccountKey = accountKeyBeforeRestore;
       await NotificationService.instance.cancelAll();
       notificationsCancelled = true;
       await hive.clearAll();
@@ -258,14 +299,108 @@ class BackupService {
       }
       await hive.saveAllDayClassModes(parsed.dayModes);
       await hive.setDataVersion(parsed.dataVersion);
+      if (parsed.includesNotebookEncryptionKey) {
+        final key = parsed.notebookEncryptionKey;
+        if (key == null) {
+          await SecurityService.instance.removeNotebookEncryptionKey();
+        } else {
+          await SecurityService.instance.setNotebookEncryptionKey(key);
+        }
+      }
       await _refreshAfterImport();
       return true;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      if (snapshot != null) {
+        try {
+          if (previousAccountKey != null) {
+            await SecurityService.instance.setAccountEncryptionKey(
+              previousAccountKey,
+            );
+          } else {
+            await SecurityService.instance.removeAccountEncryptionKey();
+          }
+          await _rollbackToSnapshot(
+            snapshot,
+            accountEncryptionKey: previousAccountKey,
+          );
+          if (previousNotebookKey != null) {
+            await SecurityService.instance.setNotebookEncryptionKey(
+              previousNotebookKey,
+            );
+          } else {
+            await SecurityService.instance.removeNotebookEncryptionKey();
+          }
+        } catch (rollbackError, rollbackStackTrace) {
+          Error.throwWithStackTrace(
+            StateError(
+              'Backup restore failed and local rollback could not finish: $rollbackError',
+            ),
+            rollbackStackTrace,
+          );
+        }
+      }
       if (notificationsCancelled) {
         await NotificationService.instance.rescheduleAll();
       }
-      return false;
+      Error.throwWithStackTrace(error, stackTrace);
     }
+  }
+
+  Future<void> _rollbackToSnapshot(
+    _LocalRestoreSnapshot snapshot, {
+    required String? accountEncryptionKey,
+  }) async {
+    final hive = HiveService.instance;
+    await hive.clearAll();
+    for (final item in snapshot.reminders) {
+      await hive.saveReminder(item);
+    }
+    for (final item in snapshot.reminderHistory) {
+      await hive.saveReminderHistoryRecord(item);
+    }
+    for (final item in snapshot.schoolClasses) {
+      await hive.saveSchoolClass(item);
+    }
+    for (final item in snapshot.aiAccounts) {
+      await hive.saveAIAccount(item);
+    }
+    await hive.restoreUserAccountStorageRecords(
+      snapshot.userAccountStorageRecords,
+      encryptionKey: accountEncryptionKey,
+    );
+    for (final item in snapshot.bills) {
+      await hive.saveBill(item);
+    }
+    for (final item in snapshot.gasPurchases) {
+      await hive.saveGasPurchase(item);
+    }
+    for (final item in snapshot.suppliers) {
+      await hive.saveSupplier(item);
+    }
+    for (final item in snapshot.birthdays) {
+      await hive.saveBirthday(item);
+    }
+    for (final item in snapshot.diaryEntries) {
+      await hive.saveStoredDiaryEntry(item.id, item.toStoredJson());
+    }
+    for (final item in snapshot.notes) {
+      await hive.saveStoredNote(item.id, item.toStoredJson());
+    }
+    await hive.saveSettings(snapshot.settings);
+    await hive.savePetPreferences(snapshot.petPreferences);
+    for (final item in snapshot.studyMethods) {
+      await hive.saveStudyMethod(item);
+    }
+    for (final item in snapshot.studyHistory) {
+      await hive.saveStudyHistoryRecord(item);
+    }
+    await hive.saveStudySettings(snapshot.studySettings);
+    for (final subject in snapshot.studySubjects) {
+      await hive.saveStudySubject(subject);
+    }
+    await hive.saveAllDayClassModes(snapshot.dayModes);
+    await hive.setDataVersion(snapshot.dataVersion);
+    await _refreshAfterImport();
   }
 
   Future<SchoolScheduleBackup?> pickSchoolScheduleBackup() async {
@@ -465,6 +600,15 @@ class BackupService {
       final studySubjects = rawSubjects is List
           ? rawSubjects.whereType<String>().toList()
           : <String>[];
+      final includesNotebookEncryptionKey = data.containsKey(
+        'notebookEncryptionKey',
+      );
+      final rawNotebookKey = data['notebookEncryptionKey'];
+      if (includesNotebookEncryptionKey &&
+          rawNotebookKey != null &&
+          rawNotebookKey is! String) {
+        throw const FormatException('Invalid notebook recovery key.');
+      }
 
       return _ParsedFullBackup(
         reminders: list('reminders', Reminder.fromJson),
@@ -485,6 +629,8 @@ class BackupService {
         studySettings: studySettings,
         studySubjects: studySubjects,
         dayModes: _parseDayModes(data['schoolDayModes']),
+        notebookEncryptionKey: rawNotebookKey as String?,
+        includesNotebookEncryptionKey: includesNotebookEncryptionKey,
         dataVersion:
             (data['dataVersion'] as num?)?.toInt() ??
             HiveService.currentDataVersion,
@@ -555,6 +701,8 @@ class _ParsedFullBackup {
     required this.studySubjects,
     required this.dayModes,
     required this.dataVersion,
+    required this.notebookEncryptionKey,
+    required this.includesNotebookEncryptionKey,
   });
 
   final List<Reminder> reminders;
@@ -573,6 +721,75 @@ class _ParsedFullBackup {
   final List<StudyMethod> studyMethods;
   final List<StudySessionRecord> studyHistory;
   final StudySettings? studySettings;
+  final List<String> studySubjects;
+  final Map<int, String> dayModes;
+  final int dataVersion;
+  final String? notebookEncryptionKey;
+  final bool includesNotebookEncryptionKey;
+}
+
+class _LocalRestoreSnapshot {
+  const _LocalRestoreSnapshot({
+    required this.reminders,
+    required this.reminderHistory,
+    required this.schoolClasses,
+    required this.aiAccounts,
+    required this.userAccountStorageRecords,
+    required this.bills,
+    required this.gasPurchases,
+    required this.suppliers,
+    required this.birthdays,
+    required this.diaryEntries,
+    required this.notes,
+    required this.settings,
+    required this.petPreferences,
+    required this.studyMethods,
+    required this.studyHistory,
+    required this.studySettings,
+    required this.studySubjects,
+    required this.dayModes,
+    required this.dataVersion,
+  });
+
+  factory _LocalRestoreSnapshot.capture(HiveService hive) =>
+      _LocalRestoreSnapshot(
+        reminders: hive.getReminders(),
+        reminderHistory: hive.getReminderHistory(),
+        schoolClasses: hive.getSchoolClasses(),
+        aiAccounts: hive.getAIAccounts(),
+        userAccountStorageRecords: hive.getUserAccountStorageRecords(),
+        bills: hive.getBills(),
+        gasPurchases: hive.getGasPurchases(),
+        suppliers: hive.getSuppliers(),
+        birthdays: hive.getBirthdays(),
+        diaryEntries: hive.getDiaryEntries(),
+        notes: hive.getNotes(),
+        settings: hive.getSettings(),
+        petPreferences: hive.getPetPreferences(),
+        studyMethods: hive.getStudyMethods(),
+        studyHistory: hive.getStudyHistory(),
+        studySettings: hive.getStudySettings(),
+        studySubjects: hive.getStudySubjects(),
+        dayModes: hive.getDayClassModes(),
+        dataVersion: hive.dataVersion,
+      );
+
+  final List<Reminder> reminders;
+  final List<ReminderHistoryRecord> reminderHistory;
+  final List<SchoolClass> schoolClasses;
+  final List<AIAccount> aiAccounts;
+  final Map<String, String> userAccountStorageRecords;
+  final List<Bill> bills;
+  final List<GasPurchase> gasPurchases;
+  final List<Supplier> suppliers;
+  final List<Birthday> birthdays;
+  final List<DiaryEntry> diaryEntries;
+  final List<NotebookNote> notes;
+  final AppSettings settings;
+  final PetPreferences petPreferences;
+  final List<StudyMethod> studyMethods;
+  final List<StudySessionRecord> studyHistory;
+  final StudySettings studySettings;
   final List<String> studySubjects;
   final Map<int, String> dayModes;
   final int dataVersion;
