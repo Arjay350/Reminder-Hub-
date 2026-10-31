@@ -125,38 +125,40 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
                 value: _isUserBirthday,
                 onChanged: _setUserBirthday,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Relationship',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+              if (!_isUserBirthday) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Relationship',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: Birthday.relationshipOptions.map((option) {
-                  final selected = _relationship == option;
-                  return ChoiceChip(
-                    label: Text(option),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _relationship = option),
-                    selectedColor: const Color(
-                      0xFFF9A8D4,
-                    ).withValues(alpha: 0.35),
-                    backgroundColor: isDark
-                        ? const Color(0xFF1E294B)
-                        : const Color(0xFFF8FAFC),
-                    labelStyle: TextStyle(
-                      color: selected
-                          ? const Color(0xFFEC4899)
-                          : theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  );
-                }).toList(),
-              ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: Birthday.relationshipOptions.map((option) {
+                    final selected = _relationship == option;
+                    return ChoiceChip(
+                      label: Text(option),
+                      selected: selected,
+                      onSelected: (_) => setState(() => _relationship = option),
+                      selectedColor: const Color(
+                        0xFFF9A8D4,
+                      ).withValues(alpha: 0.35),
+                      backgroundColor: isDark
+                          ? const Color(0xFF1E294B)
+                          : const Color(0xFFF8FAFC),
+                      labelStyle: TextStyle(
+                        color: selected
+                            ? const Color(0xFFEC4899)
+                            : theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
               const SizedBox(height: 16),
               InkWell(
                 onTap: _pickDate,
@@ -323,7 +325,12 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
   Future<void> _setUserBirthday(bool? value) async {
     final shouldBeUserBirthday = value ?? false;
     if (!shouldBeUserBirthday) {
-      setState(() => _isUserBirthday = false);
+      setState(() {
+        _isUserBirthday = false;
+        if (_relationship == 'Self') {
+          _relationship = 'Family';
+        }
+      });
       return;
     }
 
@@ -337,7 +344,16 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
       return;
     }
 
-    setState(() => _isUserBirthday = true);
+    setState(() {
+      _isUserBirthday = true;
+      _relationship = 'Self';
+      if (_nameController.text.trim().isEmpty) {
+        final userName = HiveService.instance.getSettings().userName.trim();
+        if (userName.isNotEmpty && userName.toLowerCase() != 'user') {
+          _nameController.text = userName;
+        }
+      }
+    });
   }
 
   Future<bool> _askToEditExistingBirthday() async {
@@ -401,7 +417,7 @@ class _BirthdayDialogState extends State<BirthdayDialog> {
             .copyWith(
               name: name,
               birthDate: finalBirthDate,
-              relationship: _relationship,
+              relationship: _isUserBirthday ? 'Self' : _relationship,
               giftIdeas: _giftIdeasController.text.trim(),
               remind7DaysBefore: _remind7DaysBefore,
               remind1DayBefore: _remind1DayBefore,

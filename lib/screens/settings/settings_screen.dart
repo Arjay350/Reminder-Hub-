@@ -548,21 +548,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   subtitle: const Text(
-                    'Create a passphrase-encrypted database backup',
+                    'Unprotected JSON; anyone with the file can read it',
                     style: TextStyle(fontSize: 12),
                   ),
                   trailing: const Icon(Icons.chevron_right, size: 20),
                   onTap: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     try {
-                      final passphrase = await showBackupPassphraseDialog(
-                        context,
-                        restoring: false,
-                      );
-                      if (passphrase == null || !mounted) return;
-                      final path = await BackupService.instance.exportBackup(
-                        passphrase: passphrase,
-                      );
+                      final path = await BackupService.instance.exportBackup();
                       if (mounted && path != null) {
                         messenger.showSnackBar(
                           SnackBar(content: Text('Backup saved: $path')),
@@ -627,15 +620,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     );
                     if (shouldRestore != true || !context.mounted) return;
-                    final passphrase = await showBackupPassphraseDialog(
-                      context,
-                      restoring: true,
-                    );
-                    if (passphrase == null || !context.mounted) return;
                     bool success;
                     try {
                       success = await BackupService.instance.importBackup(
-                        passphrase: passphrase,
+                        requestPassphrase: () => showBackupPassphraseDialog(
+                          context,
+                          restoring: true,
+                        ),
                       );
                     } catch (error) {
                       if (mounted) {
@@ -715,10 +706,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     lastBackupSubtitle =
                         'Last backup: ${Formatters.formatDate(dt)} at ${Formatters.formatTime(dt)}';
                   } catch (_) {
-                    lastBackupSubtitle = 'Last backup: $lastBackup';
+                    lastBackupSubtitle =
+                        'Unprotected backup • Last backup: $lastBackup';
                   }
                 } else {
-                  lastBackupSubtitle = 'No cloud backups created yet';
+                  lastBackupSubtitle = 'Unprotected JSON backup to Google Drive';
                 }
 
                 return Column(
@@ -886,7 +878,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       subtitle: const Text(
-                        'Prompts for a passphrase on startup; it is never saved',
+                        'Uploads an unprotected backup to Google Drive on startup',
                         style: TextStyle(fontSize: 12),
                       ),
                       value: _settings.autoGoogleDriveBackup,
@@ -1054,16 +1046,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _handleGoogleDriveBackup() async {
     if (_isGoogleDriveBackingUp) return;
-    final passphrase = await showBackupPassphraseDialog(
-      context,
-      restoring: false,
-    );
-    if (passphrase == null || !mounted) return;
     setState(() => _isGoogleDriveBackingUp = true);
     try {
-      final result = await GoogleDriveBackupService.instance.createBackup(
-        passphrase: passphrase,
-      );
+      final result = await GoogleDriveBackupService.instance.createBackup();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1149,14 +1134,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (confirmed != true || !mounted) return;
 
-      final passphrase = await showBackupPassphraseDialog(
-        context,
-        restoring: true,
-      );
-      if (passphrase == null || !mounted) return;
       final result = await GoogleDriveBackupService.instance.restoreBackup(
         selectedBackup.id,
-        passphrase: passphrase,
+        requestPassphrase: () => showBackupPassphraseDialog(
+          context,
+          restoring: true,
+        ),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

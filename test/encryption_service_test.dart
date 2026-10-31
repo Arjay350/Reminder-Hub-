@@ -52,14 +52,13 @@ void main() {
   });
 
   test(
-    'account records are encrypted at rest and decrypt after restart',
+    'account records use ordinary local JSON and survive restart',
     () async {
       await hive.saveUserAccount(account());
       final stored = hive.getUserAccountStorageRecords()['account-1']!;
 
-      expect(stored, contains(EncryptionService.accountRecordFormat));
-      expect(stored, isNot(contains('secret-password-value')));
-      expect(stored, isNot(contains('secret-pin-value')));
+      expect(stored, contains('secret-password-value'));
+      expect(stored, contains('secret-pin-value'));
       expect(hive.getUserAccounts().single.password, 'secret-password-value');
 
       await hive.resetForTesting();
@@ -72,12 +71,19 @@ void main() {
   );
 
   test(
-    'legacy plaintext account migration is resumable and idempotent',
+    'legacy encrypted accounts migrate to ordinary local JSON',
     () async {
       final legacy = account().toJson();
+      final encryptedLegacy = await encryption.encryptAccountJson(
+        jsonEncode(legacy),
+        localKey,
+      );
+      FlutterSecureStorage.setMockInitialValues({
+        'reminder_hub_account_encryption_key': localKey,
+      });
       await hive.writeRawUserAccountRecordForTesting(
         'account-1',
-        jsonEncode(legacy),
+        encryptedLegacy,
       );
       await hive.resetForTesting();
 
@@ -86,8 +92,8 @@ void main() {
         testCredentialEncryptionKey: localKey,
       );
       final migrated = hive.getUserAccountStorageRecords()['account-1']!;
-      expect(migrated, contains(EncryptionService.accountRecordFormat));
-      expect(migrated, isNot(contains('secret-password-value')));
+      expect(migrated, isNot(contains(EncryptionService.accountRecordFormat)));
+      expect(migrated, contains('secret-password-value'));
       expect(hive.getUserAccounts().single.password, 'secret-password-value');
 
       await hive.resetForTesting();
@@ -99,15 +105,24 @@ void main() {
     },
   );
 
-  test('missing device key locks records without deleting them', () async {
-    await hive.saveUserAccount(account());
+  test('missing legacy key preserves unreadable rows without locking app data', () async {
+    final encryptedLegacy = await encryption.encryptAccountJson(
+      jsonEncode(account().toJson()),
+      localKey,
+    );
+    await hive.writeRawUserAccountRecordForTesting(
+      'account-1',
+      encryptedLegacy,
+    );
     final stored = hive.getUserAccountStorageRecords();
     await hive.resetForTesting();
     FlutterSecureStorage.setMockInitialValues({});
 
     await hive.init(directoryPath: tempDir.path);
-    expect(() => hive.getUserAccounts(), throwsStateError);
+    expect(hive.getUserAccounts(), isEmpty);
     expect(hive.getUserAccountStorageRecords(), stored);
+    await hive.saveUserAccount(account().copyWith(id: 'account-2'));
+    expect(hive.getUserAccounts().single.id, 'account-2');
   });
 
   test(

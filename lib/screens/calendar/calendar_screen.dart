@@ -18,8 +18,16 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   final HiveService _hive = HiveService.instance;
 
-  DateTime _focusedMonth = DateTime.now();
-  DateTime _selectedDate = DateTime.now();
+  DateTime _focusedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
+  DateTime _selectedDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
 
   List<Reminder> _reminders = [];
   List<SchoolClass> _schoolClasses = [];
@@ -132,8 +140,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             tooltip: 'Go to Today',
             onPressed: () {
               setState(() {
-                _selectedDate = DateTime.now();
-                _focusedMonth = DateTime.now();
+                final now = DateTime.now();
+                _selectedDate = DateTime(now.year, now.month, now.day);
+                _focusedMonth = DateTime(now.year, now.month, 1);
               });
             },
           ),
@@ -147,11 +156,46 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  DateFormat('MMMM yyyy').format(_focusedMonth),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _focusedMonth,
+                      firstDate: DateTime(1920),
+                      lastDate: DateTime(2100),
+                      initialDatePickerMode: DatePickerMode.year,
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _focusedMonth = DateTime(picked.year, picked.month, 1);
+                        _selectedDate = DateTime(
+                          picked.year,
+                          picked.month,
+                          picked.day,
+                        );
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          DateFormat('MMMM yyyy').format(_focusedMonth),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down, size: 22),
+                      ],
+                    ),
                   ),
                 ),
                 Row(
@@ -452,14 +496,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (!mounted || result == null) return;
 
     await _loadEvents();
-    if (result is Birthday &&
-        existingIds.contains(result.id) &&
-        result.id != birthday?.id) {
-      await _openBirthdayForm(birthday: result);
+    if (result is Birthday) {
+      if (existingIds.contains(result.id) && result.id != birthday?.id) {
+        await _openBirthdayForm(birthday: result);
+      } else {
+        final targetDate = DateTime(
+          _focusedMonth.year,
+          result.birthDate.month,
+          result.birthDate.day,
+        );
+        setState(() {
+          _selectedDate = targetDate;
+          _focusedMonth = DateTime(targetDate.year, targetDate.month, 1);
+        });
+      }
     }
   }
 
   Future<void> _showBirthdayDetails(Birthday birthday) async {
+    final age = birthday.ageOnYear(_selectedDate.year);
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -469,7 +524,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              birthday.isUserBirthday ? 'My Birthday' : birthday.name,
+              birthday.isUserBirthday ? '🎂 My Birthday' : birthday.name,
               style: Theme.of(
                 dialogContext,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -480,9 +535,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 birthday.yearKnown ? 'MMMM d, y' : 'MMMM d',
               ).format(birthday.birthDate),
             ),
-            if (birthday.relationship.isNotEmpty) ...[
+            if (birthday.yearKnown && age != null && age > 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Turns $age in ${_selectedDate.year}',
+                style: TextStyle(
+                  color: Theme.of(dialogContext).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            if (!birthday.isUserBirthday &&
+                birthday.relationship.isNotEmpty &&
+                birthday.relationship != 'Self') ...[
               const SizedBox(height: 4),
               Text('Relationship: ${birthday.relationship}'),
+            ],
+            if (birthday.giftIdeas.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('Gift ideas: ${birthday.giftIdeas}'),
             ],
             if (birthday.customNotes.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -770,18 +841,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // Birthdays
     for (final birthday in _birthdays) {
-      final birthdayDate = birthday.nextBirthdayDateFor(date);
-      if (Formatters.isSameDay(birthdayDate, date)) {
-        final ageText = birthday.turningAgeFor(date) == null
+      if (birthday.occursOnDate(date)) {
+        final age = birthday.ageOnYear(date.year);
+        final ageText = (age == null || age <= 0)
             ? ''
-            : ' • Turns ${birthday.turningAgeFor(date)}';
+            : ' • Turns $age';
         final isUser = birthday.isUserBirthday;
         items.add(
           _CalendarEventItem(
             title: isUser ? '🎂 My Birthday' : birthday.name,
             subtitle: isUser
-                ? 'Celebration day${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}'
-                : '${birthday.relationship}$ageText${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}',
+                ? 'Celebration day${ageText.isNotEmpty ? ageText : ''}${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}'
+                : '${birthday.relationship.isNotEmpty && birthday.relationship != 'Self' ? birthday.relationship : 'Birthday'}$ageText${birthday.giftIdeas.isNotEmpty ? ' • Gift: ${birthday.giftIdeas}' : ''}',
             typeLabel: isUser ? 'Your Birthday' : 'Birthday',
             icon: Icons.cake_rounded,
             color: isUser ? const Color(0xFFEC4899) : const Color(0xFFF472B6),

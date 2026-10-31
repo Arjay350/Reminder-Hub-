@@ -75,8 +75,7 @@ class _AccountManagerScreenState extends State<AccountManagerScreen> {
                 const Icon(Icons.lock_outline, size: 40),
                 const SizedBox(height: 12),
                 const Text(
-                  'Saved credentials are locked. Your account data has not been deleted. '
-                  'Restore a passphrase-protected backup from Settings or make sure device secure storage is available.',
+                  'Saved account data could not be loaded. Please try again.',
                   textAlign: TextAlign.center,
                 ),
               ],
